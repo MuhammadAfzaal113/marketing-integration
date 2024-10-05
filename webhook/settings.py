@@ -25,18 +25,15 @@ SECRET_KEY = 'django-insecure-!ken0l-a(1kzamlncg4$8@6njm&5c&y60#71cc)o2@oziz(*4z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    'localhost',         # For local development
-    '127.0.0.1',        # For local development
-    '0939-103-12-199-142.ngrok-free.app '
-]
+ALLOWED_HOSTS = ['*']
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'webhook',
         'USER': 'postgres',
-        'PASSWORD': '1234',
-        'HOST': 'localhost',
+        'PASSWORD': '4ZT9HJSmDH36OBu3M0RS',
+        'HOST': 'automojo.cday8qsyg9nx.us-east-2.rds.amazonaws.com',
         'PORT': '5432',
     }
 }
