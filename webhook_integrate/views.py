@@ -85,7 +85,8 @@ def shopmonkey_webhook(request):
             if '66f1e6a215e9cb493d3cb538' not in data[0]['data']['tags']:
                 return JsonResponse({'status': 'success'}, status=200)
 
-            stage_id = get_stage_id_by_name(workflow_name)
+            stage_id = '50fae1af-b111-457b-8501-ea42e99921e3'  # 48 Hour Text Follow Up
+            # stage_id = get_stage_id_by_name(workflow_name)
             contact_id = get_or_create_contact(public_id, customer_email, customer_phone, customer_name)
             if stage_id:
                 payload = json.dumps({
