@@ -30,14 +30,17 @@ def get_stage_id_by_name(workflow_name):
 
 def create_contact_via_api(email, phone, name):
     url = "https://rest.gohighlevel.com/v1/contacts/"
+    data = dict()
+    if email:
+        data['email'] = email
+    if phone:
+        data['phone'] = phone
+    if name:
+        data['name'] = name
+        data['firstName'] = name.split()[0]
+        data['lastName'] = name.split()[1] if len(name.split()) > 1 else ""
 
-    payload = json.dumps({
-        "email": email,
-        "phone": phone,
-        "firstName": name.split()[0],
-        "lastName": name.split()[1] if len(name.split()) > 1 else "",
-        "name": name
-    })
+    payload = json.dumps(data)
     headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI'
@@ -73,11 +76,14 @@ def shopmonkey_webhook(request):
         try:
             data = json.loads(request.body)
             workflow_name = data[0]["mappings"]["workflow"]["name"]
-            customer_email = data[0]["data"]["customerEmail"]
-            customer_phone = data[0]["data"]["customerPhone"]
-            customer_name = data[0]["mappings"]["customer"]["firstName"] + " " + data[0]["mappings"]["customer"][
-                "lastName"]
+            customer_email = data[0]["data"].get("customerEmail", "")
+            customer_phone = data[0]["data"].get("customerPhone", "")
+            first_name = data[0]["mappings"]["customer"].get("firstName", "")
+            last_name = data[0]["mappings"]["customer"]["lastName"]
+            customer_name = first_name + " " + last_name
             public_id = data[0]["data"]["publicId"]
+            if '66f1e6a215e9cb493d3cb538' not in data[0]['data']['tags']:
+                return JsonResponse({'status': 'success'}, status=200)
 
             stage_id = get_stage_id_by_name(workflow_name)
             contact_id = get_or_create_contact(public_id, customer_email, customer_phone, customer_name)
@@ -99,13 +105,15 @@ def shopmonkey_webhook(request):
                 response = requests.request("POST", url, headers=headers, data=payload)
 
                 if response.status_code == 200:
+                    print('success')
                     return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
                 else:
-                    return JsonResponse({"error": "Failed to send data to GoHighLevel"}, status=response.status_code)
+                    return JsonResponse({"error": str(response.text)}, status=response.status_code)
             else:
                 return JsonResponse({"error": "No matching stage found"}, status=400)
 
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            print(e)
+            return JsonResponse({"error": str(e)}, status=200)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
