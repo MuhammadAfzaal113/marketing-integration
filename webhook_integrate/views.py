@@ -45,9 +45,10 @@ def get_stage_id_by_name(workflow_name):
     return None
 
 
-def create_contact_via_api(email, phone, name):
+def create_contact_via_api(email, phone, name, creation_date, total_cost, is_paid, is_invoice):
     url = "https://rest.gohighlevel.com/v1/contacts/"
     data = dict()
+    data['"source"'] = "AutoMojo API"
     if email:
         data['email'] = email
     if phone:
@@ -56,7 +57,14 @@ def create_contact_via_api(email, phone, name):
         data['name'] = name
         data['firstName'] = name.split()[0]
         data['lastName'] = name.split()[1] if len(name.split()) > 1 else ""
+    data['tags'] = ["48hoursmsfollowup"]
+    data['customField'] = dict()
+    data['customField']['A27TucjoRyaGgmUenMBC'] = str(is_paid) if is_paid else 'False'
+    data['customField']['miWOey9B79FmN9mlE111'] = str(is_invoice) if is_invoice else 'False'
 
+    data['customField']["mvQCVs9s0IjzgjvWML53"]: total_cost
+    data['customField']["PpCU6yesCcheRmUd5Fss"]: creation_date
+    print("payload: ", data)
     payload = json.dumps(data)
     headers = {
         'Content-Type': 'application/json',
@@ -67,24 +75,26 @@ def create_contact_via_api(email, phone, name):
     if response.status_code == 200:
         return response.json()["contact"]["id"]
     else:
+        print(response.status_code)
+        print(response.text)
         raise Exception("Failed to create contact via API")
 
 
-def get_or_create_contact(public_id, email, phone, name):
-    try:
-        contact = Contact.objects.filter(shopmonkey_id=public_id).first()
-        if contact:
-            return contact.contact_id
-        else:
-            contact_id = create_contact_via_api(email, phone, name)
-
-            new_contact = Contact(shopmonkey_id=public_id, contact_id=contact_id)
-            new_contact.save()
-
-            return contact_id
-    except IntegrityError as e:
-        print(f"Database error: {e}")
-        return None
+# def get_or_create_contact(public_id, email, phone, name):
+#     try:
+#         contact = Contact.objects.filter(shopmonkey_id=public_id).first()
+#         if contact:
+#             return contact.contact_id
+#         else:
+#             contact_id = create_contact_via_api(email, phone, name)
+#
+#             new_contact = Contact(shopmonkey_id=public_id, contact_id=contact_id)
+#             new_contact.save()
+#
+#             return contact_id
+#     except IntegrityError as e:
+#         print(f"Database error: {e}")
+#         return None
 
 
 @csrf_exempt
@@ -92,6 +102,9 @@ def shopmonkey_webhook(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            if json_reader(data, "tags") is None:
+                return JsonResponse({'status': 'success'}, status=200)
+
             if '66f1e6a215e9cb493d3cb538' not in json_reader(data, "tags"):
                 return JsonResponse({'status': 'success'}, status=200)
 
@@ -104,44 +117,52 @@ def shopmonkey_webhook(request):
             customer_phone = json_reader(data, "customerPhone")
             first_name = json_reader(data, "firstName")
             last_name = json_reader(data, "lastName")
+            creation_date = json_reader(data, "creationDate")
+            total_cost = json_reader(data, "totalCost")
+            is_paid = json_reader(data, "isPaid")
+            is_invoice = json_reader(data, "isInvoice")
 
             # customer_name = first_name + " " + last_name
             # customer_name is concatenated to avoid NoneType error
             customer_name = first_name + " " + last_name if first_name and last_name else ""
             public_id = json_reader(data, "publicId")
             if first_name and last_name and customer_phone and public_id:
+                # contact_status = get_or_create_contact(public_id, customer_email, customer_phone,
+                #                                        customer_name, creation_date, total_cost)
+                contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, creation_date, total_cost, is_paid, is_invoice)
                 # stage_id = get_stage_id_by_name("48 Hour Text Follow Up")
-                stage_id = '50fae1af-b111-457b-8501-ea42e99921e3'
-                contact_id = get_or_create_contact(public_id, customer_email, customer_phone, customer_name)
-                if stage_id:
-                    payload = json.dumps({
-                        "title": "new opportunity",
-                        "status": "open",
-                        "stageId": stage_id,
-                        "email": customer_email,
-                        "phone": customer_phone,
-                        "contactId": contact_id,
-                        "name": customer_name,
-                        "tags": [
-                            "48hoursmsfollowup",
-                        ]
-                    })
-                    url = "https://rest.gohighlevel.com/v1/pipelines/myEIOmMlgBXbDm9y3zxH/opportunities/"
-                    headers = {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI'
-                    }
-                    response = requests.request("POST", url, headers=headers, data=payload)
-
-                    if response.status_code == 200:
-                        print('success')
-                        return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
-                    else:
-                        print({"error": str(response.text)})
-                        return JsonResponse({"error": str(response.text)}, status=response.status_code)
-                else:
-                    print({"error": "No matching stage found"})
-                    return JsonResponse({"error": "No matching stage found"}, status=200)
+                # stage_id = '50fae1af-b111-457b-8501-ea42e99921e3'
+                # if stage_id:
+                #     payload = json.dumps({
+                #         "title": "new opportunity",
+                #         "status": "open",
+                #         "stageId": stage_id,
+                #         "email": customer_email,
+                #         "phone": customer_phone,
+                #         "contactId": contact_id,
+                #         "name": customer_name,
+                #         "tags": [
+                #             "48hoursmsfollowup",
+                #         ]
+                #     })
+                #     url = "https://rest.gohighlevel.com/v1/pipelines/myEIOmMlgBXbDm9y3zxH/opportunities/"
+                #     headers = {
+                #         'Content-Type': 'application/json',
+                #         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI'
+                #     }
+                #     response = requests.request("POST", url, headers=headers, data=payload)
+                #
+                #     if response.status_code == 200:
+                #         print('success')
+                #         return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+                #     else:
+                #         print({"error": str(response.text)})
+                #         return JsonResponse({"error": str(response.text)}, status=response.status_code)
+                # else:
+                #     print({"error": "No matching stage found"})
+                #     return JsonResponse({"error": "No matching stage found"}, status=200)
+                if contact_id:
+                    return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
 
             return JsonResponse({"error": "Invalid data"}, status=200)
         except Exception as e:
