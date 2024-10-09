@@ -121,7 +121,10 @@ def shopmonkey_webhook(request):
                         "email": customer_email,
                         "phone": customer_phone,
                         "contactId": contact_id,
-                        "name": customer_name
+                        "name": customer_name,
+                        "tags": [
+                            "48hoursmsfollowup",
+                        ]
                     })
                     url = "https://rest.gohighlevel.com/v1/pipelines/myEIOmMlgBXbDm9y3zxH/opportunities/"
                     headers = {
