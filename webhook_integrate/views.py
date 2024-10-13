@@ -56,6 +56,10 @@ def env_var(shop_id):
                 'is_invoice': 'tdJ1XUAHeGKIr0s5si8m',
                 'total_cost': 'kTQQPVdVtV3uf81WAJc1',
                 'creation_date': 'vgnwxi0kEUXTBgJTlM7j'
+            },
+            'contact_tag': {
+                '48hrs': '48hoursmsfollowup',
+                'firstTimeCustomer': 'firstTimeCustomer'
             }
         },
     }
