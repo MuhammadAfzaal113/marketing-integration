@@ -1,6 +1,7 @@
 from django.db import models
 from utils.abstract_models import CommonFields
 from webhook_integrate.choices import Operators
+from utils.helper import json_reader
 
 class Shop(models.Model):
     shop_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
@@ -46,18 +47,52 @@ class WebhookFilter(CommonFields):
         Applies this filter to a data dictionary.
         """
         # Get the actual data value for the key
-        actual_value = data.get(self.key)
+        actual_value = data.json_reader(data, self.key)
 
         # Apply the condition based on the operator
-        # if self.operator == Operators.EQUALS:
-        #     return actual_value == self.value
-        # elif self.operator == Operators.CONTAINS:
-        #     return self.value in actual_value if isinstance(actual_value, str) else False
-        # elif self.operator == Operators.GTE:
-        #     return float(actual_value) >= float(self.value) if actual_value else False
-        # elif self.operator == Operators.LTE:
-        #     return float(actual_value) <= float(self.value) if actual_value else False
-        # return False
+        if self.operator == Operators.DOESNOTCONTAINS:
+            return self.value not in actual_value
+        
+        elif self.operator == Operators.CONTAINS:
+            return self.value in actual_value
+        
+        elif self.operator == Operators.STARTWITH:
+            return actual_value.startswith(self.value)
+        
+        elif self.operator == Operators.NOTSTARTWITH:
+            return not actual_value.startswith(self.value)
+        
+        elif self.operator == Operators.ENDSWITH:
+            return actual_value.endswith(self.value)
+        
+        elif self.operator == Operators.GREATER:
+            return float(actual_value )> float(self.value)
+        
+        elif self.operator == Operators.LESS:
+            return float(actual_value) < float(self.value)
+        
+        elif self.operator == Operators.AFTER:
+            return actual_value > self.value
+        
+        elif self.operator == Operators.BEFORE:
+            return actual_value < self.value
+        
+        elif self.operator == Operators.EQUALS:
+            return actual_value == self.value
+        
+        elif self.operator == Operators.ISTRUE:
+            return actual_value
+        
+        elif self.operator == Operators.ISFALSE:
+            return not actual_value
+        
+        elif self.operator == Operators.DOESNOTEXIST:
+            return actual_value is None
+        
+        elif self.operator == Operators.EXISTS:
+            return actual_value is not None
+        else:
+            return False
     
 class Customer(CommonFields):
     email = models.EmailField(max_length=255, null=True, blank=True)
