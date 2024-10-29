@@ -19,7 +19,7 @@ from django.urls import re_path, path, include
 from webhook_integrate.views import shopmonkey_webhook
 
 urlpatterns = [
+    path('webhook/api/v1/', include('webhook_integrate.urls')),
     re_path(r'^webhook/(?P<shop_id>[a-zA-Z0-9]+)', shopmonkey_webhook),
-    path('webhook/', include('webhook_integrate.urls'))
     
 ]
