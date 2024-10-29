@@ -4,5 +4,5 @@ from webhook_integrate.views import *
 
 
 urlpatterns = [
-
+    path('generate-url', generate_url),
 ]

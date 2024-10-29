@@ -1,7 +1,14 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+import uuid
 import json
 import requests
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from webhook_integrate.models import Webhook, Shop, WebhookFilter, Operators
 
 
 def env_var(shop_id):
@@ -164,3 +171,51 @@ def shopmonkey_webhook(request, shop_id):
             return JsonResponse({"error": str(e)}, status=200)
     print({"error": "Invalid request method"})
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@api_view(['GET'])
+def generate_url(request):
+    try:
+        url = 'https://api.gohighlevel.com/v1/webhooks/'
+        url = url + str(uuid.uuid4()).split('-')[0]
+        
+        webhook = Webhook.objects.create(webhook_url=url)
+        response_data = {
+            "success": True,
+            "message": "Url Generate Successfully",
+            "data": {
+                "id": webhook.id,
+                "webhook_url": webhook.webhook_url
+            }
+        }
+        return Response({'success': True, 'message': 'Url Generate Successfully ', 'response_data':response_data,}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def create_filter(request):
+    try:
+        webhook_id = request.data.get('webhook_id')
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+        else:
+            key = request.data.get('key')
+            value = request.data.get('value')
+            operator = request.data.get('operator')
+            webhook_filter = WebhookFilter.objects.create(webhook=webhook, key=key, value=value, operator=operator)
+        return Response({'success': True, 'message': 'Filter created successfully', 'data': webhook_filter.id}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_webhook_list(request):
+    try:
+        webhook_id = request.query_params.get('webhook_id', None)
+        if webhook_id:
+            webhooks = Webhook.objects.filter(id=webhook_id).values('id', 'webhook_url')
+        else:
+            webhooks = Webhook.objects.values('id', 'webhook_url')
+        return Response({'success': True, 'message': 'Webhook list', 'data': webhooks}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
