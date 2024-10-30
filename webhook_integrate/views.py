@@ -8,8 +8,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from webhook_integrate.models import Webhook, Shop, WebhookFilter
-from utils.helper import json_reader, create_contact_via_api, RequestData, WebhookAction
+from webhook_integrate.models import Webhook, Shop, WebhookFilter, RequestData, WebhookAction
+from utils.helper import json_reader, create_contact_via_api
 
 
 @csrf_exempt
@@ -49,7 +49,7 @@ def shopmonkey_webhook(request, shop_id):
                 customer_name = first_name + " " + last_name if first_name and last_name else ""
                 public_id = json_reader(data, "publicId")
                 if first_name and last_name and customer_phone and public_id:
-                    contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, custom_fields, tags, shop.api_key)
+                    contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, custom_fields, shop.api_key)
 
                     if contact_id:
                         return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
