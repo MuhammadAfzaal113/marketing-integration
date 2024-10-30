@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
+from datetime import datetime
 
 
 def env_var(shop_id):
@@ -62,7 +63,12 @@ def env_var(shop_id):
                 'firstTimeCustomer': 'firstTimeCustomer'
             }
         },
+
+        '513d1344': {
+                'shop_name': 'bid_monster',
+        }
     }
+    # invoiced True for Won filter
     return env[shop_id]
 
 
@@ -121,6 +127,9 @@ def shopmonkey_webhook(request, shop_id):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            if shop_id == '513d1344':
+                write_or_append_json(data)
+                return JsonResponse({'status': 'success'}, status=200)
             if json_reader(data, "tags") is None:
                 return JsonResponse({'status': 'success'}, status=200)
             env = env_var(shop_id)
@@ -164,3 +173,19 @@ def shopmonkey_webhook(request, shop_id):
             return JsonResponse({"error": str(e)}, status=200)
     print({"error": "Invalid request method"})
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+def write_or_append_json(data, file_path="data.json"):
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_entry = {current_datetime: data}
+
+    try:
+        with open(file_path, "r") as file:
+            json_data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        json_data = []
+
+    json_data.append(new_entry)
+
+    with open(file_path, "w") as file:
+        json.dump(json_data, file, indent=4)
