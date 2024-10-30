@@ -1,4 +1,6 @@
-
+import json
+import requests
+from datetime import datetime
 
 def json_reader(json_data, key):
     if isinstance(json_data, dict):
@@ -16,3 +18,34 @@ def json_reader(json_data, key):
                 return result
 
     return None
+
+def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
+    url = "https://rest.gohighlevel.com/v1/contacts/"
+    data = dict()
+    data['source'] = "AutoMojo API"
+    if email:
+        data['email'] = email
+    if phone:
+        data['phone'] = phone
+    if name:
+        data['name'] = name
+        data['firstName'] = name.split()[0]
+        data['lastName'] = name.split()[1] if len(name.split()) > 1 else ""
+
+    if tags is not []:
+        data['tags'] = tags
+    data['customField'] = custom_fields
+    print("payload: ", data)
+    payload = json.dumps(data)
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    if response.status_code == 200:
+        return response.json()["contact"]["id"]
+    else:
+        print(response.status_code)
+        print(response.text)
+        raise Exception("Failed to create contact via API")
