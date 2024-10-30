@@ -22,11 +22,17 @@ class Webhook(CommonFields):
     def __str__(self):
         return self.name
     
-    def apply_filters(self, data):
+    def apply_filters(self, data, is_and=False, is_or=False):
         """
         Applies all filters associated with this webhook on the incoming data.
         """
-        filters = self.filters.all()
+        if is_and:
+            query = filter(is_and=True)
+            
+        if is_or:
+            query = filter(is_or=True)
+            
+        filters = self.filters.filter(query)
         for webhook_filter in filters:
             if not webhook_filter.apply_filter(data):
                 return False  # If any filter fails, stop processing
@@ -34,10 +40,12 @@ class Webhook(CommonFields):
     
 class WebhookFilter(CommonFields):
     webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+    
     key = models.CharField(max_length=255, null=True, blank=True)
     value = models.CharField(max_length=255, null=True, blank=True)
     operator = models.CharField(max_length=50, choices=Operators.choices, null=True, blank=True)
-    
+    is_and = models.BooleanField(default=False)
+    is_or = models.BooleanField(default=False)
     
     def __str__(self):
         return self.name
@@ -94,7 +102,14 @@ class WebhookFilter(CommonFields):
         else:
             return False
     
-class Customer(CommonFields):
+class RequestData(CommonFields):
+    data = models.JSONField(null=True, blank=True)
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.name
+    
+class WebhookAction(CommonFields):
     email = models.EmailField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
     first_name = models.CharField(max_length=255, null=True, blank=True)
@@ -103,9 +118,9 @@ class Customer(CommonFields):
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_paid = models.BooleanField(default=False, null=True, blank=True)
     is_invoice = models.BooleanField(default=False, null=True, blank=True)
-    tags = models.JSONField( null=True, blank=True)
     source = models.CharField(max_length=255, default="AutoMojo API")
     customFields = models.JSONField(null=True, blank=True)
     
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)    
     def __str__(self):
         return self.name
