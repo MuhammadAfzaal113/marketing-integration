@@ -2,6 +2,7 @@ from django.db import models
 from utils.abstract_models import CommonFields
 from webhook_integrate.choices import Operators
 from utils.helper import json_reader
+from django.db.models import Q
 
 class Shop(models.Model):
     shop_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
@@ -22,17 +23,18 @@ class Webhook(CommonFields):
     def __str__(self):
         return self.name
     
-    def apply_filters(self, data, is_and=False, is_or=False):
+    def apply_filters(self, data, is_and=None, is_or=None):
         """
         Applies all filters associated with this webhook on the incoming data.
         """
+        query = Q()
         if is_and:
-            query = filter(is_and=True)
+            query = Q(is_and=True)
             
         if is_or:
-            query = filter(is_or=True)
+            query = Q(is_or=True)
             
-        filters = self.filters.filter(query)
+        filters = WebhookFilter.objects.filter(query, webhook=self.id)
         for webhook_filter in filters:
             if not webhook_filter.apply_filter(data):
                 return False  # If any filter fails, stop processing

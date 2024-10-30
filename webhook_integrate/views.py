@@ -65,7 +65,7 @@ def shopmonkey_webhook(request, shop_id):
 @api_view(['GET'])
 def generate_url(request):
     try:
-        url = 'https://api.gohighlevel.com/v1/webhooks/'
+        url = 'http://127.0.0.1:8000/webhook/'
         url = url + str(uuid.uuid4()).split('-')[0]
         
         webhook = Webhook.objects.create(webhook_url=url)
@@ -91,15 +91,16 @@ def create_filter(request):
         if not webhook:
             return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
         
-        if not webhook_filter:
+        if not webhook_filters:
             return Response({'success': False, 'message': 'Filters not found'}, status.HTTP_400_BAD_REQUEST)
             
-        webhook_filters = json.dumps(webhook_filters)
         for webhook_filter in webhook_filters:
             key = webhook_filter.get('key')
             value = webhook_filter.get('value')
             operator = webhook_filter.get('operator')
-            webhook_filter = WebhookFilter.objects.create(webhook=webhook, key=key, value=value, operator=operator)
+            is_and = webhook_filter.get('is_and', False)
+            is_or = webhook_filter.get('is_or', False)
+            webhook_filter = WebhookFilter.objects.create(webhook=webhook, key=key, value=value, operator=operator, is_and=is_and, is_or=is_or)
         return Response({'success': True, 'message': 'Filter created successfully', 'data': webhook_filter.id}, status.HTTP_200_OK)
     except Exception as e:
         return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
@@ -132,7 +133,7 @@ def create_action(request):
         total_cost = request.data.get('total_cost', None)
         is_paid = request.data.get('is_paid', None)
         is_invoice = request.data.get('is_invoice', None)
-        customFields = json.loads(request.data.get('customFields', None))
+        customFields = request.data.get('customFields', None)
         
         action = WebhookAction.objects.create(webhook=webhook, email=email, phone=phone, first_name=first_name, last_name=last_name, creation_date=creation_date, total_cost=total_cost, is_paid=is_paid, is_invoice=is_invoice, customFields=customFields)
         return Response({'success': True, 'message': 'Action created successfully', 'data': action.id}, status.HTTP_200_OK)

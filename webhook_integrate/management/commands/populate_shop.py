@@ -3,8 +3,8 @@ from webhook_integrate.models import Shop
 
 class Command(BaseCommand):
     help = 'Populate Shop data from env dictionary'
-
-    def handle(self, *args, **kwargs):
+    
+    def assign_permissions(self):
         env = {
             '137c4887': {
                 'shop_name': 'speed_of_sound',
@@ -63,14 +63,27 @@ class Command(BaseCommand):
                 }
             },
         }
+        try:
+            for shop_id, shop_data in env.items():
+                try:
+                    shop = Shop.objects.create(
+                        shop_id=shop_id,
+                        shop_name=shop_data['shop_name'],
+                        api_key=shop_data['api_key'],
+                        tag_id=shop_data['tag_id'],
+                        custom_fields=shop_data['custom_fields'],
+                        contact_tag=shop_data['contact_tag']
+                    )
+                
+                    self.stdout.write(f"shop: {shop.shop_name} (ID: {shop_id})")
+                except Exception as e:
+                    self.stdout.write(f"Error inside the loop: {e}")
+        except Exception as e:
+            self.stdout.write(f"Error: {e}")
 
-        for shop_id, shop_data in env.items():
-            shop = Shop.objects.create(
-                shop_id=shop_id,
-                shop_name=shop_data['shop_name'],
-                api_key=shop_data['api_key'],
-                tag_id=shop_data['tag_id'],
-                custom_fields=shop_data['custom_fields'],
-                contact_tag=shop_data['contact_tag']
-            )
-            self.stdout.write(f"shop: {shop.shop_name} (ID: {shop_id})")
+    def add_arguments(self, parser):
+        parser.add_argument('--path', help='Refers to fixture path')
+        
+    def handle(self, *args, **kwargs):
+        self.assign_permissions()
+        self.stdout.write(self.style.SUCCESS('User Role Created successfully.'))
