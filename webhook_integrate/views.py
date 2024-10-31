@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from webhook_integrate.models import Webhook, Shop, WebhookFilter, RequestData, WebhookAction
 from utils.helper import json_reader, create_contact_via_api
+from webhook_integrate.serializers import WebhookDetailsSerializer, RequestDataSerializer
 
 
 @csrf_exempt
@@ -201,5 +202,62 @@ def delete_filter(request):
         
         webhook_filter.delete()
         return Response({'success': True, 'message': 'Filter deleted successfully'}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_webhook_details(request):
+    try:
+        webhook_id = request.GET.get('webhook_id', None)
+        if webhook_id is None:
+            return Response({'success': False, 'message': 'Webhook id is required '}, status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        serializer = WebhookDetailsSerializer(webhook, context = {'request': request})
+        if serializer:
+            response_data = {
+                'success': True,
+                'message': 'Webhook details',
+                'data': serializer.data
+            }
+            return Response({'Response_data': response_data}, status.HTTP_200_OK)
+        else:
+            response_data = {
+                'success': False,
+                'message': 'Webhook details not found',
+                'error': serializer.errors
+            }
+            return Response({'Response_data':response_data}, status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_request_data(request):
+    try:
+        webhook_id = request.GET.get('webhook_id', None)
+        if webhook_id is None:
+            return Response({'success': False, 'message': 'Webhook id is required '}, status.HTTP_400_BAD_REQUEST)
+        
+        request_data = RequestData.objects.filter(webhook=webhook_id)[:10]
+        serializer = RequestDataSerializer(request_data, many=True)
+        if serializer:
+            response_data = {
+                'success': True,
+                'message': 'Request data',
+                'data': serializer.data
+            }
+            return Response({'response_data': response_data}, status.HTTP_200_OK)
+        else:
+            response_data = {
+                'success': False,
+                'message': 'Request data not found',
+                'error': serializer.errors
+            }
+        return Response({'response_data':response_data}, status.HTTP_400_BAD_REQUEST)
+    
     except Exception as e:
         return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)

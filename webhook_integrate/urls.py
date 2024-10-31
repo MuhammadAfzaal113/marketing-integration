@@ -13,4 +13,6 @@ urlpatterns = [
     path('update-filter', update_filter),
     path('delete-action', delete_action),
     path('delete-filter', delete_filter),
+    path('get-webhook-details', get_webhook_details),
+    path('get-request-data', get_request_data),
 ]
