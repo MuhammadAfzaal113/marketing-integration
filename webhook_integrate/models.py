@@ -57,10 +57,13 @@ class WebhookFilter(CommonFields):
         Applies this filter to a data dictionary.
         """
         # Get the actual data value for the key
-        actual_value = data.json_reader(data, self.key)
-
+        actual_value = json_reader(data, self.key)
+        
+        if actual_value is None:
+            return False # If the key does not exist in the data, return False
+        
         # Apply the condition based on the operator
-        if self.operator == Operators.DOESNOTCONTAINS:
+        if self.operator == Operators.DOSENOTCONTAINS:
             return self.value not in actual_value
         
         elif self.operator == Operators.CONTAINS:

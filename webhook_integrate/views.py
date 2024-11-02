@@ -17,13 +17,13 @@ from webhook_integrate.serializers import WebhookDetailsSerializer, RequestDataS
 def shopmonkey_webhook(request, shop_id):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            data = request.body
             full_url = request.build_absolute_uri()
             webhook = Webhook.objects.filter(webhook_url=full_url).first()
             if not webhook:
                 return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
             
-            RequestData.objects.create(webhook=webhook, data=data)
+            RequestData.objects.create(webhook=webhook, data=str(data))
             if webhook.apply_filters(data, is_and=True) or webhook.apply_filters(data, is_or=True):
                 shop = Shop.objects.filter(shop_id=shop_id).first()
                 if not shop:
@@ -31,14 +31,14 @@ def shopmonkey_webhook(request, shop_id):
 
                 action = WebhookAction.objects.filter(webhook=webhook).first()
                 
-                customer_email = json_reader(data, str(action.email))
-                customer_phone = json_reader(data, str(action.phone))
-                first_name = json_reader(data, str(action.first_name))
-                last_name = json_reader(data, str(action.last_name))
-                creation_date = json_reader(data, str(action.creation_date))
-                total_cost = json_reader(data, str(action.total_cost))
-                is_paid = json_reader(data, str(action.is_paid))
-                is_invoice = json_reader(data, str(action.is_invoice))
+                customer_email = json_reader(data, 'customer_email')
+                customer_phone = json_reader(data, 'customer_phone')
+                first_name = json_reader(data, 'first_name')
+                last_name = json_reader(data, 'last_name')
+                creation_date = json_reader(data, 'creation_date')
+                total_cost = json_reader(data, 'total_cost')
+                is_paid = json_reader(data, 'is_paid')
+                is_invoice = json_reader(data, "is_invoice")
                 
                 custom_fields = {
                     ['custom_fields']['is_paid']: str(is_paid) if is_paid else 'False',
@@ -109,11 +109,7 @@ def create_filter(request):
 @api_view(['GET'])
 def get_webhook_list(request):
     try:
-        webhook_id = request.query_params.get('webhook_id', None)
-        if webhook_id:
-            webhooks = Webhook.objects.filter(id=webhook_id).values('id', 'webhook_url')
-        else:
-            webhooks = Webhook.objects.values('id', 'webhook_url')
+        webhooks = Webhook.objects.values('id', 'webhook_url', 'created_at', 'is_active').all()
         return Response({'success': True, 'message': 'Webhook list', 'data': webhooks}, status.HTTP_200_OK)
     except Exception as e:
         return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
