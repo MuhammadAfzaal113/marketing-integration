@@ -35,6 +35,9 @@ class Webhook(CommonFields):
             query = Q(is_or=True)
             
         filters = WebhookFilter.objects.filter(query, webhook=self.id)
+        if not filters:
+            return False
+        
         for webhook_filter in filters:
             if not webhook_filter.apply_filter(data):
                 return False  # If any filter fails, stop processing
