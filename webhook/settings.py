@@ -30,7 +30,7 @@ ALLOWED_HOSTS = ['*']
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'webhook',
+        'NAME': 'webhook_automation',
         'USER': 'postgres',
         'PASSWORD': '4ZT9HJSmDH36OBu3M0RS',
         'HOST': 'automojo.cday8qsyg9nx.us-east-2.rds.amazonaws.com',
@@ -136,6 +136,7 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_METHODS = [
