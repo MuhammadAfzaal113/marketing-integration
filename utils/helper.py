@@ -35,7 +35,6 @@ def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
     if tags is not []:
         data['tags'] = tags
     data['customField'] = custom_fields
-    print("payload: ", data)
     payload = json.dumps(data)
     headers = {
         'Content-Type': 'application/json',

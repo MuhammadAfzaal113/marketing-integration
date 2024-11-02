@@ -37,16 +37,14 @@ def shopmonkey_webhook(request, shop_id):
                 last_name = json_reader(data, str(action.last_name))
                 creation_date = json_reader(data, str(action.creation_date))
                 total_cost = json_reader(data, str(action.total_cost))
-                if action.is_paid:
-                    is_paid = json_reader(data, "isPaid")
-                if action.is_invoice:
-                    is_invoice = json_reader(data, "isInvoice")
+                is_paid = json_reader(data, "isPaid") if action.is_paid else None
+                is_invoice = json_reader(data, "isInvoice") if action.is_invoice else None
                 
                 custom_fields = {
-                    ['custom_fields']['is_paid']: str(is_paid) if is_paid else 'False',
-                    ['custom_fields']['is_invoice']: str(is_invoice) if is_invoice else 'False',
-                    ['custom_fields']['total_cost']: str(total_cost),
-                    ['custom_fields']['creation_date']: str(creation_date)
+                    'is_paid': str(is_paid) if is_paid else 'False',
+                    'is_invoice': str(is_invoice) if is_invoice else 'False',
+                    'total_cost': str(total_cost),
+                    'creation_date': str(creation_date)
                 }
 
                 customer_name = first_name + " " + last_name if first_name and last_name else ""
