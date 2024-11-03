@@ -109,7 +109,7 @@ def create_filter(request):
 @api_view(['GET'])
 def get_webhook_list(request):
     try:
-        webhooks = Webhook.objects.values('id', 'webhook_url', 'created_at', 'is_active').all()
+        webhooks = Webhook.objects.values('id', 'webhook_url', 'created_at', 'is_active').order_by('-created_at')
         return Response({'success': True, 'message': 'Webhook list', 'data': webhooks}, status.HTTP_200_OK)
     except Exception as e:
         return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
