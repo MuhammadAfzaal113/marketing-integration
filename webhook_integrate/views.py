@@ -3,73 +3,76 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
 from datetime import datetime
+import uuid
+
+from webhook_integrate.models import Shop, Webhook
 
 
-def env_var(shop_id):
-    env = {
-        '137c4887': {
-            'shop_name': 'speed_of_sound',
-            'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI',
-            'tag_id': {
-                '48hoursmsfollowup': '66f1e6a215e9cb493d3cb538',
-                'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
-            },
-            'custom_fields': {
-                'is_paid': 'A27TucjoRyaGgmUenMBC',
-                'is_invoice': 'miWOey9B79FmN9mlE111',
-                'total_cost': 'mvQCVs9s0IjzgjvWML53',
-                'creation_date': 'PpCU6yesCcheRmUd5Fss'
-            },
-            'contact_tag': {
-                '48hrs': '48hoursmsfollowup',
-                'firstTimeCustomer': 'firstTimeCustomer'
-            }
-        },
-        '111f3445': {
-            'shop_name': 'stereo_steve',
-            'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IlRUVHFPZHAxVk9oWmpIUVo0bFlKIiwiY29tcGFueV9pZCI6IlJLdWpCTUdDT0wyV0FvTHZnOHV3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzA0ODE5Njk0NzY2LCJzdWIiOiJ1c2VyX2lkIn0.gKTyfdF1jNSK3JsvPdVWlTy4PL0iPXdBnFv9g1A4ktU',
-            'tag_id': {
-                'zaps': '65d7e284a86dea1d0419154c',
-                '48hoursmsfollowup': '65d7e284a86dea1d0419154c',
-                # '48hoursmsfollowup': '670a4aebf1ad447c77f2aa49',
-                'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
-            },
-            'custom_fields': {
-                'is_paid': 'ZUigjdADYGCXXedkj8Mf',
-                'is_invoice': '503wVKGF3wNQrfQjBQFQ',
-                'total_cost': 'CcUfyOz4HDP9Y4tzkUrW',
-                'creation_date': 'oqIj1JREs8BhljSQvejZ'
-            },
-            'contact_tag': {
-                '48hrs': '(2)sm4followup',
-                'firstTimeCustomer': 'firstTimeCustomer'
-            }
-        },
-        'fe7b41f8': {
-            'shop_name': 'capital_car_audio',
-            'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImVGMVhWdTd4YkFtZFMycXY4MmkwIiwidmVyc2lvbiI6MSwiaWF0IjoxNzI4NzU5NjgzNTk1LCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.-WY5h5gtM7Kak7d-XSeplJh2FQ7O678ALNIGOG10v0Q',
-            'tag_id': {
-                '48hoursmsfollowup': '65d7e284a86dea1d0419154c',
-                'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
-            },
-            'custom_fields': {
-                'is_paid': 'JLemlO9TI5TehrWjHx72',
-                'is_invoice': 'tdJ1XUAHeGKIr0s5si8m',
-                'total_cost': 'kTQQPVdVtV3uf81WAJc1',
-                'creation_date': 'vgnwxi0kEUXTBgJTlM7j'
-            },
-            'contact_tag': {
-                '48hrs': '48hoursmsfollowup',
-                'firstTimeCustomer': 'firstTimeCustomer'
-            }
-        },
-
-        '513d1344': {
-                'shop_name': 'bid_monster',
-        }
-    }
-    # invoiced True for Won filter
-    return env[shop_id]
+# def env_var(shop_id):
+#     env = {
+#         '137c4887': {
+#             'shop_name': 'speed_of_sound',
+#             'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI',
+#             'tag_id': {
+#                 '48hoursmsfollowup': '66f1e6a215e9cb493d3cb538',
+#                 'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
+#             },
+#             'custom_fields': {
+#                 'is_paid': 'A27TucjoRyaGgmUenMBC',
+#                 'is_invoice': 'miWOey9B79FmN9mlE111',
+#                 'total_cost': 'mvQCVs9s0IjzgjvWML53',
+#                 'creation_date': 'PpCU6yesCcheRmUd5Fss'
+#             },
+#             'contact_tag': {
+#                 '48hrs': '48hoursmsfollowup',
+#                 'firstTimeCustomer': 'firstTimeCustomer'
+#             }
+#         },
+#         '111f3445': {
+#             'shop_name': 'stereo_steve',
+#             'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IlRUVHFPZHAxVk9oWmpIUVo0bFlKIiwiY29tcGFueV9pZCI6IlJLdWpCTUdDT0wyV0FvTHZnOHV3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzA0ODE5Njk0NzY2LCJzdWIiOiJ1c2VyX2lkIn0.gKTyfdF1jNSK3JsvPdVWlTy4PL0iPXdBnFv9g1A4ktU',
+#             'tag_id': {
+#                 'zaps': '65d7e284a86dea1d0419154c',
+#                 '48hoursmsfollowup': '65d7e284a86dea1d0419154c',
+#                 # '48hoursmsfollowup': '670a4aebf1ad447c77f2aa49',
+#                 'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
+#             },
+#             'custom_fields': {
+#                 'is_paid': 'ZUigjdADYGCXXedkj8Mf',
+#                 'is_invoice': '503wVKGF3wNQrfQjBQFQ',
+#                 'total_cost': 'CcUfyOz4HDP9Y4tzkUrW',
+#                 'creation_date': 'oqIj1JREs8BhljSQvejZ'
+#             },
+#             'contact_tag': {
+#                 '48hrs': '(2)sm4followup',
+#                 'firstTimeCustomer': 'firstTimeCustomer'
+#             }
+#         },
+#         'fe7b41f8': {
+#             'shop_name': 'capital_car_audio',
+#             'api_key': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6ImVGMVhWdTd4YkFtZFMycXY4MmkwIiwidmVyc2lvbiI6MSwiaWF0IjoxNzI4NzU5NjgzNTk1LCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.-WY5h5gtM7Kak7d-XSeplJh2FQ7O678ALNIGOG10v0Q',
+#             'tag_id': {
+#                 '48hoursmsfollowup': '65d7e284a86dea1d0419154c',
+#                 'firstTimeCustomer': '65a6dd414b3584bbdabe146d',
+#             },
+#             'custom_fields': {
+#                 'is_paid': 'JLemlO9TI5TehrWjHx72',
+#                 'is_invoice': 'tdJ1XUAHeGKIr0s5si8m',
+#                 'total_cost': 'kTQQPVdVtV3uf81WAJc1',
+#                 'creation_date': 'vgnwxi0kEUXTBgJTlM7j'
+#             },
+#             'contact_tag': {
+#                 '48hrs': '48hoursmsfollowup',
+#                 'firstTimeCustomer': 'firstTimeCustomer'
+#             }
+#         },
+#
+#         '513d1344': {
+#                 'shop_name': 'bid_monster',
+#         }
+#     }
+#     # invoiced True for Won filter
+#     return env[shop_id]
 
 
 def json_reader(json_data, key):
@@ -189,3 +192,20 @@ def write_or_append_json(data, file_path="data.json"):
 
     with open(file_path, "w") as file:
         json.dump(json_data, file, indent=4)
+
+
+# API to create a new webhook
+@csrf_exempt
+def create_webhook(request):
+    if request.method == 'POST':
+        generated_url = f"https://example.com/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        return JsonResponse({'url': generated_url})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def generate_webhook_url(request):
+    if request.method == 'POST':
+        generated_url = f"https://example.com/webhook/{uuid.uuid4()}"
+        return JsonResponse({'webhook_url': generated_url})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
