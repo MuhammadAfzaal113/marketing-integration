@@ -22,7 +22,7 @@ from django.conf import settings
 from webhook_integrate.views import shopmonkey_webhook
 
 urlpatterns = [
-    re_path(r'^webhook/(?P<shop_id>[a-zA-Z0-9]+)', shopmonkey_webhook),
+    re_path(r'^webhook/(?P<webhook_url>[a-zA-Z0-9]+)', shopmonkey_webhook),
     path("admin/", admin.site.urls),
     path('hook/', include('webhook_integrate.urls')),
 ]

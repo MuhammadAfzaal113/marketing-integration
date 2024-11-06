@@ -1,12 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from webhook_integrate.models import Shop, Tag, CustomField, ContactTag, Webhook
 import requests
 from datetime import datetime
 import uuid
-
-from webhook_integrate.models import Shop, Webhook
-
 
 # def env_var(shop_id):
 #     env = {
@@ -89,93 +87,101 @@ def json_reader(json_data, key):
             result = json_reader(item, key)
             if result is not None:
                 return result
-
     return None
 
 
 def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
     url = "https://rest.gohighlevel.com/v1/contacts/"
-    data = dict()
-    data['source'] = "AutoMojo API"
-    if email:
-        data['email'] = email
-    if phone:
-        data['phone'] = phone
-    if name:
-        data['name'] = name
-        data['firstName'] = name.split()[0]
-        data['lastName'] = name.split()[1] if len(name.split()) > 1 else ""
-
-    if tags is not []:
-        data['tags'] = tags
-    data['customField'] = custom_fields
-    print("payload: ", data)
-    payload = json.dumps(data)
+    data = {
+        'source': "AutoMojo API",
+        'email': email,
+        'phone': phone,
+        'name': name,
+        'firstName': name.split()[0] if name else "",
+        'lastName': name.split()[1] if len(name.split()) > 1 else "",
+        'tags': tags or [],
+        'customField': custom_fields
+    }
+    
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {api_key}'
     }
-    response = requests.request("POST", url, headers=headers, data=payload)
+    response = requests.post(url, headers=headers, json=data)
 
     if response.status_code == 200:
-        return response.json()["contact"]["id"]
+        return response.json().get("contact", {}).get("id")
     else:
-        print(response.status_code)
-        print(response.text)
+        print(response.status_code, response.text)
         raise Exception("Failed to create contact via API")
 
 
 @csrf_exempt
-def shopmonkey_webhook(request, shop_id):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            if shop_id == '513d1344':
-                write_or_append_json(data)
-                return JsonResponse({'status': 'success'}, status=200)
-            if json_reader(data, "tags") is None:
-                return JsonResponse({'status': 'success'}, status=200)
-            env = env_var(shop_id)
+def shopmonkey_webhook(request, webhook_url):
+    if request.method != 'POST':
+        return JsonResponse({"error": "Invalid request method"}, status=405)
 
-            if env['tag_id']['48hoursmsfollowup'] in json_reader(data, "tags"):  # 48hrsSMSworkflow
-                tags = env['contact_tag']['48hrs']
-            elif env['tag_id']['firstTimeCustomer'] in json_reader(data, "tags"):  # firstTimeCustomer
-                tags = env['contact_tag']['zaps']
-            elif env['tag_id']['firstTimeCustomer'] in json_reader(data, "tags"):  # firstTimeCustomer
-                tags = env['contact_tag']['firstTimeCustomer']
-            else:
-                return JsonResponse({'status': 'success'}, status=200)
+    try:
+        full_url = request.build_absolute_uri()
+        # shop = Shop.objects.filter(shop_id=shop_id).first()
+        # if not shop:
+        #     return JsonResponse({"error": "Shop not found"}, status=404)
+        
+        webhook = Webhook.objects.filter(webhook_url=full_url).first()
+        tags = Tag.objects.filter(webhook=webhook)
+        custom_fields = CustomField.objects.filter(webhook=webhook)
+        contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
+        
+        data = json.loads(request.body)
 
-            customer_email = json_reader(data, "customerEmail")
-            customer_phone = json_reader(data, "customerPhone")
-            first_name = json_reader(data, "firstName")
-            last_name = json_reader(data, "lastName")
-            creation_date = json_reader(data, "creationDate")
-            total_cost = json_reader(data, "totalCost")
-            is_paid = json_reader(data, "isPaid")
-            is_invoice = json_reader(data, "isInvoice")
+        if shop_id == '513d1344':
+            write_or_append_json(data)
+            return JsonResponse({'status': 'success'}, status=200)
 
-            custom_fields = {
-                env['custom_fields']['is_paid']: str(is_paid) if is_paid else 'False',
-                env['custom_fields']['is_invoice']: str(is_invoice) if is_invoice else 'False',
-                env['custom_fields']['total_cost']: str(total_cost),
-                env['custom_fields']['creation_date']: str(creation_date)
-            }
+        data_tags = json_reader(data, "tags")
+        if not data_tags:
+            return JsonResponse({'status': 'success'}, status=200)
 
-            customer_name = first_name + " " + last_name if first_name and last_name else ""
-            public_id = json_reader(data, "publicId")
-            if first_name and last_name and customer_phone and public_id:
-                contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, custom_fields, tags, env['api_key'])
+        if tag.tag_id in data_tags:
+            tags = [contact_tags]
+        else:
+            return JsonResponse({'status': 'success'}, status=200)
 
-                if contact_id:
-                    return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+        customer_email = json_reader(data, "customerEmail")
+        customer_phone = json_reader(data, "customerPhone")
+        first_name = json_reader(data, "firstName")
+        last_name = json_reader(data, "lastName")
+        creation_date = json_reader(data, "creationDate")
+        total_cost = json_reader(data, "totalCost")
+        is_paid = json_reader(data, "isPaid")
+        is_invoice = json_reader(data, "isInvoice")
 
-            return JsonResponse({"error": "Invalid data"}, status=200)
-        except Exception as e:
-            print({"error": str(e)})
-            return JsonResponse({"error": str(e)}, status=200)
-    print({"error": "Invalid request method"})
-    return JsonResponse({"error": "Invalid request method"}, status=405)
+        custom_field_map = {cf.field_name: cf.field_id for cf in custom_fields}
+        custom_fields_data = {
+            custom_field_map.get('is_paid'): str(is_paid) if is_paid else 'False',
+            custom_field_map.get('is_invoice'): str(is_invoice) if is_invoice else 'False',
+            custom_field_map.get('total_cost'): str(total_cost),
+            custom_field_map.get('creation_date'): str(creation_date)
+        }
+
+        customer_name = f"{first_name} {last_name}".strip()
+        contact_id = create_contact_via_api(
+            email=customer_email,
+            phone=customer_phone,
+            name=customer_name,
+            custom_fields=custom_fields_data,
+            tags=tags,
+            api_key=shop.api_key
+        )
+
+        if contact_id:
+            return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+        return JsonResponse({"error": "Invalid data"}, status=200)
+    except Shop.DoesNotExist:
+        return JsonResponse({"error": "Shop not found"}, status=404)
+    except Exception as e:
+        print({"error": str(e)})
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 def write_or_append_json(data, file_path="data.json"):
@@ -192,7 +198,6 @@ def write_or_append_json(data, file_path="data.json"):
 
     with open(file_path, "w") as file:
         json.dump(json_data, file, indent=4)
-
 
 # API to create a new webhook
 @csrf_exempt

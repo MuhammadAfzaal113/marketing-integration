@@ -10,10 +10,18 @@ class Shop(models.Model):
     def __str__(self):
         return self.shop_name
 
+class Webhook(models.Model):
+    webhook_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    webhook_name = models.CharField(max_length=255)
+    webhook_url = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f'{self.shop.shop_name} - {self.webhook_name}'
 
 class Tag(models.Model):
     tag_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
     tag_name = models.CharField(max_length=255)
     tag_id = models.CharField(max_length=255)
 
@@ -23,7 +31,7 @@ class Tag(models.Model):
 
 class CustomField(models.Model):
     custom_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
     field_name = models.CharField(max_length=255)
     field_id = models.CharField(max_length=255)
 
@@ -33,7 +41,7 @@ class CustomField(models.Model):
 
 class ContactTag(models.Model):
     contact_tag_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
     tag_name = models.CharField(max_length=255)
     tag_id = models.CharField(max_length=255)
 
@@ -41,11 +49,3 @@ class ContactTag(models.Model):
         return self.tag_name
 
 
-class Webhook(models.Model):
-    webhook_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
-    webhook_name = models.CharField(max_length=255)
-    webhook_url = models.CharField(max_length=255)
-
-    def __str__(self):
-        return self.webhook_url
