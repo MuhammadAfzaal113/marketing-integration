@@ -89,11 +89,13 @@ WSGI_APPLICATION = 'webhook.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'webhook_zaps',
         'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
+        'PASSWORD': '4ZT9HJSmDH36OBu3M0RS',
+        'HOST': 'automojo.cday8qsyg9nx.us-east-2.rds.amazonaws.com',
         'PORT': '5432',
+
     }
 }
 
