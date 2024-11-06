@@ -23,8 +23,8 @@ from webhook_integrate.views import shopmonkey_webhook
 
 urlpatterns = [
     re_path(r'^webhook/(?P<webhook_url>[a-zA-Z0-9]+)', shopmonkey_webhook),
-    path("admin/", admin.site.urls),
     path('hook/', include('webhook_integrate.urls')),
+    path("", admin.site.urls),
 ]
 
 if settings.DEBUG:

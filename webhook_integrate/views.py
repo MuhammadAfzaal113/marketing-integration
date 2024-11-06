@@ -123,18 +123,18 @@ def shopmonkey_webhook(request, webhook_url):
 
     try:
         full_url = request.build_absolute_uri()
-        # shop = Shop.objects.filter(shop_id=shop_id).first()
-        # if not shop:
-        #     return JsonResponse({"error": "Shop not found"}, status=404)
-        
         webhook = Webhook.objects.filter(webhook_url=full_url).first()
-        tags = Tag.objects.filter(webhook=webhook)
+        if not webhook:
+            return JsonResponse({"error": "Webhook not found"}, status=404)
+                                
+        api_key = str(webhook.shop.api_key)
+        tags = Tag.objects.filter(webhook=webhook).first()
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
         
         data = json.loads(request.body)
 
-        if shop_id == '513d1344':
+        if webhook_url == '513d1344':
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
 
@@ -142,7 +142,7 @@ def shopmonkey_webhook(request, webhook_url):
         if not data_tags:
             return JsonResponse({'status': 'success'}, status=200)
 
-        if tag.tag_id in data_tags:
+        if tags.tag_id in data_tags:
             tags = [contact_tags]
         else:
             return JsonResponse({'status': 'success'}, status=200)
@@ -171,7 +171,7 @@ def shopmonkey_webhook(request, webhook_url):
             name=customer_name,
             custom_fields=custom_fields_data,
             tags=tags,
-            api_key=shop.api_key
+            api_key=api_key
         )
 
         if contact_id:
