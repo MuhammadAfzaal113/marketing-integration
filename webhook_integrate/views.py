@@ -140,9 +140,9 @@ def shopmonkey_webhook(request, webhook_url):
 
         # Extract tags dynamically from the incoming data based on ContactTag entries
         matching_tags = []
-        for contact_tag in contact_tags:
-            if json_reader(data, contact_tag.tag_name):
-                matching_tags.append(contact_tag.tag_name)
+        for tag in tags:
+            if json_reader(data, tag.tag_name):
+                matching_tags.append(tag.tag_name)
 
         # Continue only if relevant tags found in data
         if not matching_tags:
