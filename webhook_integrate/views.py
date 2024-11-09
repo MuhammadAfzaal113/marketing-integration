@@ -138,13 +138,14 @@ def shopmonkey_webhook(request, webhook_url):
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
 
-        data_tags = json_reader(data, "tags")
-        if not data_tags:
-            return JsonResponse({'status': 'success'}, status=200)
+        # Extract tags dynamically from the incoming data based on ContactTag entries
+        matching_tags = []
+        for contact_tag in contact_tags:
+            if json_reader(data, contact_tag.tag_name):
+                matching_tags.append(contact_tag.tag_name)
 
-        if tags.tag_id in data_tags:
-            tags = [contact_tags]
-        else:
+        # Continue only if relevant tags found in data
+        if not matching_tags:
             return JsonResponse({'status': 'success'}, status=200)
 
         customer_email = json_reader(data, "customerEmail")
