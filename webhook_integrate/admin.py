@@ -82,6 +82,6 @@ class ContactTagAdmin(admin.ModelAdmin):
 
 @admin.register(FilterKeys)
 class FIlterKeysAdmin(admin.ModelAdmin):
-    list_display = ('webhook', 'first_name', 'last_name', 'email', 'phone')
+    list_display = ('webhook', 'first_name', 'last_name', 'email', 'phone', 'total', 'date')
     search_fields = ('webhook',)
     list_filter = ('first_name', 'last_name', 'email', 'phone')
