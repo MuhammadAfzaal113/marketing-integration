@@ -15,6 +15,7 @@ class Webhook(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
     webhook_name = models.CharField(max_length=255)
     webhook_url = models.CharField(max_length=255)
+    is_filter = models.BooleanField(default=True)
 
     def __str__(self):
         return f'{self.shop.shop_name} - {self.webhook_name}'
@@ -49,3 +50,9 @@ class ContactTag(models.Model):
         return self.tag_name
 
 
+class User_info(models.Model):
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=255, null=True, blank=True)
+    last_name = models.CharField(max_length=255, null=True, blank=True)
+    email = models.CharField(max_length=255, null=True, blank=True)
+    phone = models.CharField(max_length=255, null=True, blank=True)

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import Shop, Webhook, Tag, CustomField, ContactTag
+from .models import Shop, Webhook, Tag, CustomField, ContactTag, User_info
 import uuid
 
 
@@ -46,7 +46,7 @@ class ShopAdmin(admin.ModelAdmin):
 @admin.register(Webhook)
 class WebhookAdmin(admin.ModelAdmin):
     form = WebhookModelForm
-    list_display = ('webhook_name', 'shop', 'webhook_url')
+    list_display = ('webhook_name', 'shop', 'webhook_url', 'is_filter')
     search_fields = ('webhook_url', 'webhook_name',)
     list_filter = ('shop', 'webhook_name',)
     actions = ['generate_webhook']
@@ -79,3 +79,9 @@ class ContactTagAdmin(admin.ModelAdmin):
     list_display = ('contact_tag_uuid', 'webhook', 'tag_name', 'tag_id')
     search_fields = ('webhook',)
     list_filter = ('tag_name',)
+
+@admin.register(User_info)
+class User_infoAdmin(admin.ModelAdmin):
+    list_display = ('webhook', 'first_name', 'last_name', 'email', 'phone')
+    search_fields = ('webhook',)
+    list_filter = ('first_name', 'last_name', 'email', 'phone')

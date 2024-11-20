@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from webhook_integrate.models import Shop, Tag, CustomField, ContactTag, Webhook
+from webhook_integrate.models import Shop, Tag, CustomField, ContactTag, Webhook, User_info
 import requests
 from datetime import datetime
 import uuid
@@ -131,27 +131,28 @@ def shopmonkey_webhook(request, webhook_url):
         tags = Tag.objects.filter(webhook=webhook).first()
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
-        
+        user_info = User_info.objects.filter(webhook=webhook) #get user info from user info model
         data = json.loads(request.body)
-
+        
         if webhook_url == '513d1344':
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
+        
+        if webhook.is_filter:
+            # Extract tags dynamically from the incoming data based on ContactTag entries
+            matching_tags = []
+            for tag in tags:
+                if json_reader(data, tag.tag_name):
+                    matching_tags.append(tag.tag_name)
 
-        # Extract tags dynamically from the incoming data based on ContactTag entries
-        matching_tags = []
-        for tag in tags:
-            if json_reader(data, tag.tag_name):
-                matching_tags.append(tag.tag_name)
-
-        # Continue only if relevant tags found in data
-        if not matching_tags:
-            return JsonResponse({'status': 'success'}, status=200)
-
-        customer_email = json_reader(data, "customerEmail")
-        customer_phone = json_reader(data, "customerPhone")
-        first_name = json_reader(data, "firstName")
-        last_name = json_reader(data, "lastName")
+            # Continue only if relevant tags found in data
+            if not matching_tags:
+                return JsonResponse({'status': 'success'}, status=200)
+            
+        customer_email = json_reader(data, str(user_info.email))
+        customer_phone = json_reader(data, str(user_info.phone))
+        first_name = json_reader(data, str(user_info.first_name))
+        last_name = json_reader(data, str(user_info.last_name))
         creation_date = json_reader(data, "creationDate")
         total_cost = json_reader(data, "totalCost")
         is_paid = json_reader(data, "isPaid")
