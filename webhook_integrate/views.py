@@ -209,7 +209,7 @@ def write_or_append_json(data, file_path="data.json"):
 @csrf_exempt
 def create_webhook(request):
     if request.method == 'POST':
-        generated_url = f"https://example.com/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
         return JsonResponse({'url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
@@ -217,7 +217,7 @@ def create_webhook(request):
 @csrf_exempt
 def generate_webhook_url(request):
     if request.method == 'POST':
-        generated_url = f"https://example.com/webhook/{uuid.uuid4()}"
+        generated_url = f"https://webhook.automojo.io/webhook/{uuid.uuid4()}"
         return JsonResponse({'webhook_url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
