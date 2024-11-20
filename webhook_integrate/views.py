@@ -135,7 +135,7 @@ def shopmonkey_webhook(request, webhook_url):
         tags = Tag.objects.filter(webhook=webhook).first()
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
-        user_info = User_info.objects.filter(webhook=webhook) #get user info from user info model
+        user_info = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
         data = json.loads(request.body)
         
         if webhook_url == '513d1344':

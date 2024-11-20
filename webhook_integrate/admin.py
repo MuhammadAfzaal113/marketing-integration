@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import Shop, Webhook, Tag, CustomField, ContactTag, User_info
+from .models import Shop, Webhook, Tag, CustomField, ContactTag, FilterKeys
 import uuid
 
 
@@ -80,8 +80,8 @@ class ContactTagAdmin(admin.ModelAdmin):
     search_fields = ('webhook',)
     list_filter = ('tag_name',)
 
-@admin.register(User_info)
-class User_infoAdmin(admin.ModelAdmin):
+@admin.register(FilterKeys)
+class FIlterKeysAdmin(admin.ModelAdmin):
     list_display = ('webhook', 'first_name', 'last_name', 'email', 'phone')
     search_fields = ('webhook',)
     list_filter = ('first_name', 'last_name', 'email', 'phone')
