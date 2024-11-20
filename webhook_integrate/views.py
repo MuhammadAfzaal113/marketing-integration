@@ -1,172 +1,259 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+import uuid
 import json
 import requests
-from .models import Contact
-from django.db import IntegrityError
 
-# GoHighLevel Stages (Could also be stored in a database or fetched dynamically)
-GOHIGHLEVEL_STAGES = [
-    {"id": "efa68c90-eab5-4d55-b994-221b58b47e2d", "name": "In Conversation"},
-    {"id": "e42d8387-bd53-4f55-a09a-181638cb8536", "name": "Steve Est. Needs Build "},
-    {"id": "5cfe321c-3f50-4b96-88e4-b7aaa32568a2", "name": "Estimates"},
-    {"id": "50fae1af-b111-457b-8501-ea42e99921e3", "name": "Follow up estimates "},
-    {"id": "0aeebaa5-a398-41d6-aff5-70b600232e46", "name": "72 Hour Text Follow Up"},
-    {"id": "056490d2-fadb-463b-8ba6-b5ad5a0500d4", "name": "10 Day Text Follow up"},
-    {"id": "14a942f3-74a4-42a3-8608-5a9e4c611c71", "name": "21 Day Text Follow Up"},
-    {"id": "c8d118bc-8319-4241-a5c0-2d6b66821157", "name": "60 Day Text Follow Up"},
-    {"id": "100c2cdd-8b43-4de7-9a5e-5cfb6e11a14d", "name": "No Purchase / No Response"},
-    {"id": "64c3d7ae-6f86-47d4-b38f-58332e990b74", "name": "Won"},
-]
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
-
-def json_reader(json_data, key):
-    if isinstance(json_data, dict):
-        if key in json_data:
-            return json_data[key]
-        else:
-            for value in json_data.values():
-                result = json_reader(value, key)
-                if result is not None:
-                    return result
-    elif isinstance(json_data, list):
-        for item in json_data:
-            result = json_reader(item, key)
-            if result is not None:
-                return result
-
-    return None
-
-
-def get_stage_id_by_name(workflow_name):
-    for stage in GOHIGHLEVEL_STAGES:
-        if stage["name"].strip().lower() == workflow_name.strip().lower():
-            return stage["id"]
-    return None
-
-
-def create_contact_via_api(email, phone, name, creation_date, total_cost, is_paid, is_invoice):
-    url = "https://rest.gohighlevel.com/v1/contacts/"
-    data = dict()
-    data['"source"'] = "AutoMojo API"
-    if email:
-        data['email'] = email
-    if phone:
-        data['phone'] = phone
-    if name:
-        data['name'] = name
-        data['firstName'] = name.split()[0]
-        data['lastName'] = name.split()[1] if len(name.split()) > 1 else ""
-    data['tags'] = ["48hoursmsfollowup"]
-    data['customField'] = dict()
-    data['customField']['A27TucjoRyaGgmUenMBC'] = str(is_paid) if is_paid else 'False'
-    data['customField']['miWOey9B79FmN9mlE111'] = str(is_invoice) if is_invoice else 'False'
-
-    data['customField']["mvQCVs9s0IjzgjvWML53"]: total_cost
-    data['customField']["PpCU6yesCcheRmUd5Fss"]: creation_date
-    print("payload: ", data)
-    payload = json.dumps(data)
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload)
-
-    if response.status_code == 200:
-        return response.json()["contact"]["id"]
-    else:
-        print(response.status_code)
-        print(response.text)
-        raise Exception("Failed to create contact via API")
-
-
-# def get_or_create_contact(public_id, email, phone, name):
-#     try:
-#         contact = Contact.objects.filter(shopmonkey_id=public_id).first()
-#         if contact:
-#             return contact.contact_id
-#         else:
-#             contact_id = create_contact_via_api(email, phone, name)
-#
-#             new_contact = Contact(shopmonkey_id=public_id, contact_id=contact_id)
-#             new_contact.save()
-#
-#             return contact_id
-#     except IntegrityError as e:
-#         print(f"Database error: {e}")
-#         return None
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from webhook_integrate.models import Webhook, Shop, WebhookFilter, RequestData, WebhookAction
+from utils.helper import json_reader, create_contact_via_api
+from webhook_integrate.serializers import WebhookDetailsSerializer, RequestDataSerializer
 
 
 @csrf_exempt
-def shopmonkey_webhook(request):
+def shopmonkey_webhook(request, shop_id):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            if json_reader(data, "tags") is None:
-                return JsonResponse({'status': 'success'}, status=200)
+            full_url = request.build_absolute_uri()
+            webhook = Webhook.objects.filter(webhook_url=full_url).first()
+            if not webhook:
+                return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+            
+            RequestData.objects.create(webhook=webhook, data=str(data))
+            if webhook.apply_filters(data, is_and=True) or webhook.apply_filters(data, is_or=True):
+                shop = Shop.objects.filter(shop_id=shop_id).first()
+                if not shop:
+                    return JsonResponse({"error": "Shop not found"}, status=200)
 
-            if '66f1e6a215e9cb493d3cb538' not in json_reader(data, "tags"):
-                return JsonResponse({'status': 'success'}, status=200)
+                action = WebhookAction.objects.filter(webhook=webhook).first()
+                
+                customer_email = json_reader(data, str(action.email))
+                customer_phone = json_reader(data, str(action.phone))
+                first_name = json_reader(data, str(action.first_name))
+                last_name = json_reader(data, str(action.last_name))
+                creation_date = json_reader(data, str(action.creation_date))
+                total_cost = json_reader(data, str(action.total_cost))
+                is_paid = json_reader(data, "isPaid") if action.is_paid else None
+                is_invoice = json_reader(data, "isInvoice") if action.is_invoice else None
+                
+                custom_fields = {
+                    'is_paid': str(is_paid) if is_paid else 'False',
+                    'is_invoice': str(is_invoice) if is_invoice else 'False',
+                    'total_cost': str(total_cost),
+                    'creation_date': str(creation_date)
+                }
 
-            # workflow_name = data[0]["mappings"]["workflow"]["name"]
-            # customer_email = data[0]["data"].get("customerEmail", "")
-            # customer_phone = data[0]["data"].get("customerPhone", "")
-            # first_name = data[0]["mappings"]["customer"].get("firstName", "")
-            # last_name = data[0]["mappings"]["customer"]["lastName"]
-            customer_email = json_reader(data, "customerEmail")
-            customer_phone = json_reader(data, "customerPhone")
-            first_name = json_reader(data, "firstName")
-            last_name = json_reader(data, "lastName")
-            creation_date = json_reader(data, "creationDate")
-            total_cost = json_reader(data, "totalCost")
-            is_paid = json_reader(data, "isPaid")
-            is_invoice = json_reader(data, "isInvoice")
+                customer_name = first_name + " " + last_name if first_name and last_name else ""
+                public_id = json_reader(data, "publicId")
+                if first_name and last_name and customer_phone and public_id:
+                    contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, custom_fields, shop.api_key)
 
-            # customer_name = first_name + " " + last_name
-            # customer_name is concatenated to avoid NoneType error
-            customer_name = first_name + " " + last_name if first_name and last_name else ""
-            public_id = json_reader(data, "publicId")
-            if first_name and last_name and customer_phone and public_id:
-                # contact_status = get_or_create_contact(public_id, customer_email, customer_phone,
-                #                                        customer_name, creation_date, total_cost)
-                contact_id = create_contact_via_api(customer_email, customer_phone, customer_name, creation_date, total_cost, is_paid, is_invoice)
-                # stage_id = get_stage_id_by_name("48 Hour Text Follow Up")
-                # stage_id = '50fae1af-b111-457b-8501-ea42e99921e3'
-                # if stage_id:
-                #     payload = json.dumps({
-                #         "title": "new opportunity",
-                #         "status": "open",
-                #         "stageId": stage_id,
-                #         "email": customer_email,
-                #         "phone": customer_phone,
-                #         "contactId": contact_id,
-                #         "name": customer_name,
-                #         "tags": [
-                #             "48hoursmsfollowup",
-                #         ]
-                #     })
-                #     url = "https://rest.gohighlevel.com/v1/pipelines/myEIOmMlgBXbDm9y3zxH/opportunities/"
-                #     headers = {
-                #         'Content-Type': 'application/json',
-                #         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjFiYVpjRTdUeHVaN1d3aXRlckt3IiwidmVyc2lvbiI6MSwiaWF0IjoxNzI3Mzg3Nzk0ODAwLCJzdWIiOiJubDN3UFROSEhCM3Jtc1BNd3N2YiJ9.QUDqnmQL3FXV33JsvbwvdI2EYtEDahZApBupU1QZkxI'
-                #     }
-                #     response = requests.request("POST", url, headers=headers, data=payload)
-                #
-                #     if response.status_code == 200:
-                #         print('success')
-                #         return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
-                #     else:
-                #         print({"error": str(response.text)})
-                #         return JsonResponse({"error": str(response.text)}, status=response.status_code)
-                # else:
-                #     print({"error": "No matching stage found"})
-                #     return JsonResponse({"error": "No matching stage found"}, status=200)
-                if contact_id:
-                    return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
-
-            return JsonResponse({"error": "Invalid data"}, status=200)
+                    if contact_id:
+                        return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+            else:
+                return JsonResponse({"error": "Invalid data"}, status=200)
         except Exception as e:
             print({"error": str(e)})
             return JsonResponse({"error": str(e)}, status=200)
     print({"error": "Invalid request method"})
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@api_view(['GET'])
+def generate_url(request):
+    try:
+        url = 'http://127.0.0.1:8000/webhook/'
+        url = url + str(uuid.uuid4()).split('-')[0]
+        
+        webhook = Webhook.objects.create(webhook_url=url)
+        response_data = {
+            "success": True,
+            "message": "Url Generate Successfully",
+            "data": {
+                "id": webhook.id,
+                "webhook_url": webhook.webhook_url
+            }
+        }
+        return Response({'success': True, 'message': 'Url Generate Successfully ', 'response_data':response_data,}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def create_filter(request):
+    try:
+        webhook_filters = request.data.get('webhook_filters', None)
+        
+        webhook_id = request.data.get('webhook_id')
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        if not webhook_filters:
+            return Response({'success': False, 'message': 'Filters not found'}, status.HTTP_400_BAD_REQUEST)
+            
+        for webhook_filter in webhook_filters:
+            key = webhook_filter.get('key')
+            value = webhook_filter.get('value')
+            operator = webhook_filter.get('operator')
+            is_and = webhook_filter.get('is_and', False)
+            is_or = webhook_filter.get('is_or', False)
+            webhook_filter = WebhookFilter.objects.create(webhook=webhook, key=key, value=value, operator=operator, is_and=is_and, is_or=is_or)
+        return Response({'success': True, 'message': 'Filter created successfully', 'data': webhook_filter.id}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_webhook_list(request):
+    try:
+        webhooks = Webhook.objects.values('id', 'webhook_url', 'created_at', 'is_active').order_by('-created_at')
+        return Response({'success': True, 'message': 'Webhook list', 'data': webhooks}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def create_action(request):
+    try:
+        webhook_id = request.data.get('webhook_id')
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        email = request.data.get('email', None)
+        phone = request.data.get('phone', None)
+        first_name = request.data.get('first_name', None)
+        last_name = request.data.get('last_name', None)
+        creation_date = request.data.get('creation_date', None)
+        total_cost = request.data.get('total_cost', None)
+        is_paid = request.data.get('is_paid', None)
+        is_invoice = request.data.get('is_invoice', None)
+        customFields = request.data.get('customFields', None)
+        
+        action = WebhookAction.objects.create(webhook=webhook, email=email, phone=phone, first_name=first_name, last_name=last_name, creation_date=creation_date, total_cost=total_cost, is_paid=is_paid, is_invoice=is_invoice, customFields=customFields)
+        return Response({'success': True, 'message': 'Action created successfully', 'data': action.id}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PUT'])
+def update_action(request):
+    try:
+        action_id = request.data.get('action_id')
+        action = WebhookAction.objects.filter(id=action_id).first()
+        if not action:
+            return Response({'success': False, 'message': 'Action not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        action.email = request.data.get('email', action.email)
+        action.phone = request.data.get('phone', action.phone)
+        action.first_name = request.data.get('first_name', action.first_name)
+        action.last_name = request.data.get('last_name', action.last_name)
+        action.creation_date = request.data.get('creation_date', action.creation_date)
+        action.total_cost = request.data.get('total_cost', action.total_cost)
+        action.is_paid = request.data.get('is_paid', action.is_paid)
+        action.is_invoice = request.data.get('is_invoice', action.is_invoice)
+        action.customFields = request.data.get('customFields', action.customFields)
+        action.save()
+        return Response({'success': True, 'message': 'Action updated successfully', 'data': action.id}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PUT'])
+def update_filter(request):
+    try:
+        filter_id = request.data.get('filter_id')
+        webhook_filter = WebhookFilter.objects.filter(id=filter_id).first()
+        if not webhook_filter:
+            return Response({'success': False, 'message': 'Filter not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        webhook_filter.key = request.data.get('key', webhook_filter.key)
+        webhook_filter.value = request.data.get('value', webhook_filter.value)
+        webhook_filter.operator = request.data.get('operator', webhook_filter.operator)
+        webhook_filter.save()
+        return Response({'success': True, 'message': 'Filter updated successfully', 'data': filter.id}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+def delete_action(request):
+    try:
+        action_id = request.GET.get('action_id')
+        action = WebhookAction.objects.filter(id=action_id).first()
+        if not action:
+            return Response({'success': False, 'message': 'Action not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        action.delete()
+        return Response({'success': True, 'message': 'Action deleted successfully'}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+def delete_filter(request):
+    try:
+        filter_id = request.GET.get('filter_id')
+        webhook_filter = WebhookFilter.objects.filter(id=filter_id).first()
+        if not webhook_filter:
+            return Response({'success': False, 'message': 'Filter not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        webhook_filter.delete()
+        return Response({'success': True, 'message': 'Filter deleted successfully'}, status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_webhook_details(request):
+    try:
+        webhook_id = request.GET.get('webhook_id', None)
+        if webhook_id is None:
+            return Response({'success': False, 'message': 'Webhook id is required '}, status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'message': 'Webhook not found'}, status.HTTP_400_BAD_REQUEST)
+        
+        serializer = WebhookDetailsSerializer(webhook, context = {'request': request})
+        if serializer:
+            response_data = {
+                'success': True,
+                'message': 'Webhook details',
+                'data': serializer.data
+            }
+            return Response({'Response_data': response_data}, status.HTTP_200_OK)
+        else:
+            response_data = {
+                'success': False,
+                'message': 'Webhook details not found',
+                'error': serializer.errors
+            }
+            return Response({'Response_data':response_data}, status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_request_data(request):
+    try:
+        webhook_id = request.GET.get('webhook_id', None)
+        if webhook_id is None:
+            return Response({'success': False, 'message': 'Webhook id is required '}, status.HTTP_400_BAD_REQUEST)
+        
+        request_data = RequestData.objects.filter(webhook=webhook_id)[:10]
+        serializer = RequestDataSerializer(request_data, many=True)
+        if serializer:
+            response_data = {
+                'success': True,
+                'message': 'Request data',
+                'data': serializer.data
+            }
+            return Response({'response_data': response_data}, status.HTTP_200_OK)
+        else:
+            response_data = {
+                'success': False,
+                'message': 'Request data not found',
+                'error': serializer.errors
+            }
+        return Response({'response_data':response_data}, status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({'success': False, 'message': str(e)}, status.HTTP_400_BAD_REQUEST)
