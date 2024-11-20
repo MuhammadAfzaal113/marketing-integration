@@ -50,9 +50,11 @@ class ContactTag(models.Model):
         return self.tag_name
 
 
-class User_info(models.Model):
-    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+class FilterKeys(models.Model):
+    webhook = models.OneToOneField(Webhook, on_delete=models.CASCADE, unique=True)
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
     email = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=255, null=True, blank=True)
+    total = models.CharField(max_length=255, null=True, blank=True)
+    date = models.CharField(max_length=255, null=True, blank=True)

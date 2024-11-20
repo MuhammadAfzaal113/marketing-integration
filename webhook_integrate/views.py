@@ -135,7 +135,7 @@ def shopmonkey_webhook(request, webhook_url):
         tags = Tag.objects.filter(webhook=webhook).first()
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
-        user_info = User_info.objects.filter(webhook=webhook) #get user info from user info model
+        filter_keys = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
         data = json.loads(request.body)
         
         if webhook_url == '513d1344':
@@ -153,12 +153,12 @@ def shopmonkey_webhook(request, webhook_url):
             if not matching_tags:
                 return JsonResponse({'status': 'success'}, status=200)
             
-        customer_email = json_reader(data, str(user_info.email))
-        customer_phone = json_reader(data, str(user_info.phone))
-        first_name = json_reader(data, str(user_info.first_name))
-        last_name = json_reader(data, str(user_info.last_name))
-        creation_date = json_reader(data, "creationDate")
-        total_cost = json_reader(data, "totalCost")
+        customer_email = json_reader(data, str(filter_keys.email))
+        customer_phone = json_reader(data, str(filter_keys.phone))
+        first_name = json_reader(data, str(filter_keys.first_name))
+        last_name = json_reader(data, str(filter_keys.last_name))
+        creation_date = json_reader(data, str(filter_keys.date))
+        total_cost = json_reader(data, str(filter_keys.total))
         is_paid = json_reader(data, "isPaid")
         is_invoice = json_reader(data, "isInvoice")
 
