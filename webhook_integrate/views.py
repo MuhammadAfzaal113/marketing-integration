@@ -133,7 +133,7 @@ def shopmonkey_webhook(request, webhook_url):
 
     try:
         full_url = request.build_absolute_uri()
-        webhook = Webhook.objects.filter(webhook_url=full_url).first()
+        webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         if not webhook:
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
