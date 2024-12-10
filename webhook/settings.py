@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-!ken0l-a(1kzamlncg4$8@6njm&5c&y60#71cc)o2@oziz(*4z
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://webhook.automojo.io/']
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
