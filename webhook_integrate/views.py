@@ -198,7 +198,7 @@ def shopmonkey_webhook(request, webhook_url):
         return JsonResponse({"error": "Shop not found"}, status=404)
     except Exception as e:
         print({"error": str(e)})
-        return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=200)
 
 
 def write_or_append_json(data, file_path="data.json"):
