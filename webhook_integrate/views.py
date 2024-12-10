@@ -123,7 +123,7 @@ def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
 @csrf_exempt
 def shopmonkey_webhook(request, webhook_url):
     try:
-        with open('data.txt', 'a') as f:
+        with open('data.txt', 'w') as f:
             f.write(str(request.build_absolute_uri()))
             f.write('\n')
     except Exception as e:
