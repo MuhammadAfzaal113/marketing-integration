@@ -122,6 +122,12 @@ def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
 
 @csrf_exempt
 def shopmonkey_webhook(request, webhook_url):
+    try:
+        with open('data.txt', 'a') as f:
+            f.write(str(request.body)+ f"request called from {str(request.build_absolute_uri())}")
+            f.write('\n')
+    except Exception as e:
+        print(e)
     if request.method != 'POST':
         return JsonResponse({"error": "Invalid request method"}, status=405)
 
