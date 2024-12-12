@@ -138,7 +138,7 @@ def shopmonkey_webhook(request, webhook_url):
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
         api_key = str(webhook.shop.api_key)
-        tags = Tag.objects.filter(webhook=webhook).first()
+        tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
         filter_keys = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
