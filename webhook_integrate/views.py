@@ -220,14 +220,14 @@ def write_or_append_json(data, file_path="data.json"):
 @csrf_exempt
 def create_webhook(request):
     if request.method == 'POST':
-        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        generated_url = f"http://127.0.0.1:8000/webhook/{str(uuid.uuid4()).split('-')[0]}"
         return JsonResponse({'url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @csrf_exempt
 def create_webhook_v2(request):
     if request.method == 'POST':
-        generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
+        generated_url = f"http://127.0.0.1:8000/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
         return JsonResponse({'url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
@@ -247,13 +247,13 @@ def shopmonkey_webhook_v2(request, webhook_url):
     except Exception as e:
         print(e)
     if request.method != 'POST':
-        return JsonResponse({"error": "Invalid request method"}, status=405)
+        return JsonResponse({"error": "Invalid request method"}, status=200)
 
     try:
-        full_url = request.build_absolute_uri()
+        full_url = 'http://127.0.0.1:8000/webhook/v2/f10857a5'
         webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         if not webhook:
-            return JsonResponse({"error": "Webhook not found"}, status=404)
+            return JsonResponse({"error": "Webhook not found"}, status=200)
 
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
@@ -284,23 +284,9 @@ def shopmonkey_webhook_v2(request, webhook_url):
             
         customer_id = json_reader(data, 'customerId')
         
-        customer = Customer.objects.filter(customer_id=customer_id).first()
+        customer = Customer.objects.filter(contact_id=customer_id).first()
         
         if not customer:
-            url = f'https://api.shopmonkey.cloud/v3/customer/{customer_id}'
-            headers = request.headers
-            response = requests.get(url, headers=headers)
-            
-            if response.status_code == 200:
-                response_data = response.json
-                customer = Customer.objects.create(
-                    customer_id=customer_id,
-                    first_name=response_data.get('firstName'),
-                    last_name=response_data.get('lastName'),
-                    email=response_data.get('email'),
-                    phone=response_data.get('phoneNumbers')
-                )
-            else:
                 return JsonResponse({'error': 'Customer not found'}, status=200)
         
         creation_date = json_reader(data, str(filter_keys.date))
@@ -330,7 +316,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
         return JsonResponse({"error": "Invalid data"}, status=200)
     except Shop.DoesNotExist:
-        return JsonResponse({"error": "Shop not found"}, status=404)
+        return JsonResponse({"error": "Shop not found"}, status=200)
     except Exception as e:
         print({"error": str(e)})
         return JsonResponse({"error": str(e)}, status=200)
