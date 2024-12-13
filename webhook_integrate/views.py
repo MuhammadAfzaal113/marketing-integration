@@ -73,7 +73,7 @@ def shopmonkey_webhook(request, webhook_url):
         tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
-        filter_keys = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
+        filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
         try:
             with open('data.json', 'a') as f:
@@ -90,7 +90,7 @@ def shopmonkey_webhook(request, webhook_url):
             matching_tags = []
             for tag in tags:
                 if json_reader(data, tag.tag_name):
-                    matching_tags.append(tag.tag_name)
+                    matching_tags.append(tag)
 
             # Continue only if relevant tags found in data
             if not matching_tags:
@@ -119,7 +119,7 @@ def shopmonkey_webhook(request, webhook_url):
             phone=customer_phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=tags,
+            tags=matching_tags,
             api_key=api_key
         )
 
@@ -183,7 +183,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
         tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
-        filter_keys = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
+        filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
         try:
             with open('data.json', 'a') as f:
@@ -200,7 +200,8 @@ def shopmonkey_webhook_v2(request, webhook_url):
             matching_tags = []
             for tag in tags:
                 if json_reader(data, tag.tag_name):
-                    matching_tags.append(tag.tag_name)
+                    tag = json_reader(data, tag.tag_name)
+                    matching_tags.append(tag)
 
             # Continue only if relevant tags found in data
             if not matching_tags:
@@ -208,7 +209,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
             
         customer_id = json_reader(data, 'customerId')
         
-        customer = Customer.objects.filter(contact_id=customer_id).first()
+        customer = Customer.objects.filter(customer_id=customer_id).first()
         
         if not customer:
                 return JsonResponse({'error': 'Customer not found'}, status=200)
@@ -232,7 +233,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
             phone=customer.phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=tags,
+            tags=matching_tags,
             api_key=api_key
         )
 
