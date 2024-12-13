@@ -37,7 +37,7 @@ class Command(BaseCommand):
                         "period": "allTime"
                     }
                 },
-                "limit": 5000,
+                "limit": 10000,
                 "orderBy": {
                     "createdDate": "desc"
                 },
@@ -51,8 +51,8 @@ class Command(BaseCommand):
                 user_list = response_data.get('data', {})
                 
                 for user in user_list:
-                    email = user.get('emails', [{}])[0].get('email', None) if user.get('emails', None) else None
-                    if Customer.objects.filter(email=email).exists():
+                    customer_id = user.get('id', None)
+                    if Customer.objects.filter(customer_id=customer_id).exists():
                         pass
                     else:
                         customer = Customer.objects.create(
@@ -60,7 +60,7 @@ class Command(BaseCommand):
                             first_name = user.get('firstName', None),
                             last_name = user.get('lastName', None),
                             phone = user.get('phoneNumbers', [{}])[0].get('number', None) if user.get('phoneNumbers', None) else None,
-                            email = email
+                            email = user.get('emails', [{}])[0].get('email', None) if user.get('emails', None) else None
                             )
                     
                     print(f"Customer {customer.customer_id} created successfully")
