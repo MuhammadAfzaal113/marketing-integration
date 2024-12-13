@@ -220,10 +220,16 @@ def write_or_append_json(data, file_path="data.json"):
 @csrf_exempt
 def create_webhook(request):
     if request.method == 'POST':
-        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        generated_url = f"http://127.0.0.1:8000/webhook/{str(uuid.uuid4()).split('-')[0]}"
         return JsonResponse({'url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
+@csrf_exempt
+def create_webhook_v2(request):
+    if request.method == 'POST':
+        generated_url = f"http://127.0.0.1:8000/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
+        return JsonResponse({'url': generated_url})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @csrf_exempt
 def generate_webhook_url(request):
@@ -231,3 +237,86 @@ def generate_webhook_url(request):
         generated_url = f"https://webhook.automojo.io/webhook/{uuid.uuid4()}"
         return JsonResponse({'webhook_url': generated_url})
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def shopmonkey_webhook_v2(request, webhook_url):
+    try:
+        with open('data.txt', 'w') as f:
+            f.write(str(request.build_absolute_uri()))
+            f.write('\n')
+    except Exception as e:
+        print(e)
+    if request.method != 'POST':
+        return JsonResponse({"error": "Invalid request method"}, status=200)
+
+    try:
+        full_url = 'http://127.0.0.1:8000/webhook/v2/f10857a5'
+        webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
+        if not webhook:
+            return JsonResponse({"error": "Webhook not found"}, status=200)
+
+        api_key = str(webhook.shop.api_key)
+        tags = Tag.objects.filter(webhook=webhook)
+        custom_fields = CustomField.objects.filter(webhook=webhook)
+        contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
+        filter_keys = FilterKeys.objects.filter(webhook=webhook) #get user info from user info model
+        data = json.loads(request.body)
+        try:
+            with open('data.json', 'a') as f:
+                json.dump(data, f)
+                f.write('\n')
+        except Exception as e:
+            print(e)
+        if webhook_url == '513d1344':
+            write_or_append_json(data)
+            return JsonResponse({'status': 'success'}, status=200)
+        
+        if webhook.is_filter:
+            # Extract tags dynamically from the incoming data based on ContactTag entries
+            matching_tags = []
+            for tag in tags:
+                if json_reader(data, tag.tag_name):
+                    matching_tags.append(tag.tag_name)
+
+            # Continue only if relevant tags found in data
+            if not matching_tags:
+                return JsonResponse({'status': 'success'}, status=200)
+            
+        customer_id = json_reader(data, 'customerId')
+        
+        customer = Customer.objects.filter(contact_id=customer_id).first()
+        
+        if not customer:
+                return JsonResponse({'error': 'Customer not found'}, status=200)
+        
+        creation_date = json_reader(data, str(filter_keys.date))
+        total_cost = json_reader(data, str(filter_keys.total))
+        is_paid = json_reader(data, "isPaid")
+        is_invoice = json_reader(data, "isInvoice")
+
+        custom_field_map = {cf.field_name: cf.field_id for cf in custom_fields}
+        custom_fields_data = {
+            custom_field_map.get('is_paid'): str(is_paid) if is_paid else 'False',
+            custom_field_map.get('is_invoice'): str(is_invoice) if is_invoice else 'False',
+            custom_field_map.get('total_cost'): str(total_cost),
+            custom_field_map.get('creation_date'): str(creation_date)
+        }
+
+        customer_name = f"{customer.first_name} {customer.last_name}".strip()
+        contact_id = create_contact_via_api(
+            email=customer.email,
+            phone=customer.phone,
+            name=customer_name,
+            custom_fields=custom_fields_data,
+            tags=tags,
+            api_key=api_key
+        )
+
+        if contact_id:
+            return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+        return JsonResponse({"error": "Invalid data"}, status=200)
+    except Shop.DoesNotExist:
+        return JsonResponse({"error": "Shop not found"}, status=200)
+    except Exception as e:
+        print({"error": str(e)})
+        return JsonResponse({"error": str(e)}, status=200)

@@ -14,7 +14,10 @@ class WebhookModelForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        generate_url = reverse('generate_webhook_url')
+        generate_v1_url = reverse('generate_webhook_url')
+        generate_v2_url = reverse('generate_webhook_v2_url')
+
+        # Configure the webhook_url field
         self.fields['webhook_url'].widget = forms.TextInput(attrs={
             'size': 80,
             'style': 'width: 70%; display: inline-block;',
@@ -23,10 +26,20 @@ class WebhookModelForm(forms.ModelForm):
         self.fields['webhook_url'].help_text = mark_safe(
             f'<button type="button" style="cursor: pointer; padding: 10px 15px; margin: 4px; color: #fff; '
             f'background: #417690; border: none; border-radius: 4px; transition: background 0.15s;" '
-            f'onclick="generateWebhookUrl()">Generate</button>'
+            f'onclick="generateWebhookUrl(\'{generate_v1_url}\')">Generate V1</button>'
+            f'<button type="button" style="cursor: pointer; padding: 10px 15px; margin: 4px; color: #fff; '
+            f'background: #17a589; border: none; border-radius: 4px; transition: background 0.15s;" '
+            f'onclick="generateWebhookUrl2(\'{generate_v2_url}\')">Generate V2</button>'
             f'<script>'
-            f'function generateWebhookUrl() {{'
-            f'    fetch("{generate_url}", {{ method: "POST" }})'
+            f'function generateWebhookUrl(url) {{'
+            f'    fetch(url, {{ method: "POST" }})'
+            f'        .then(response => response.json())'
+            f'        .then(data => {{'
+            f'            document.getElementById("id_webhook_url").value = data.url;'
+            f'        }});'
+            f'}}'
+            f'function generateWebhookUrl2(url) {{'
+            f'    fetch(url, {{ method: "POST" }})'
             f'        .then(response => response.json())'
             f'        .then(data => {{'
             f'            document.getElementById("id_webhook_url").value = data.url;'
@@ -34,6 +47,7 @@ class WebhookModelForm(forms.ModelForm):
             f'}}'
             f'</script>'
         )
+
 
 
 # Admin classes with filters, search, and list displays for models

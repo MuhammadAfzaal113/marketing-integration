@@ -58,3 +58,15 @@ class FilterKeys(models.Model):
     phone = models.CharField(max_length=255, null=True, blank=True)
     total = models.CharField(max_length=255, null=True, blank=True)
     date = models.CharField(max_length=255, null=True, blank=True)
+    
+
+class Customer(models.Model):
+    customer_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+    customer_id = models.CharField(max_length=255)
+    first_name = models.CharField(max_length=255, null=True, blank=True)
+    last_name = models.CharField(max_length=255, null=True, blank=True)
+    email = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    phone = models.CharField(max_length=255, null=True, blank=True)
+
+    def __str__(self):
+        return self.customer_id
