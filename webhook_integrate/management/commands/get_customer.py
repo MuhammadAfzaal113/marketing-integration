@@ -55,15 +55,19 @@ class Command(BaseCommand):
                     if Customer.objects.filter(customer_id=customer_id).exists():
                         pass
                     else:
-                        customer = Customer.objects.create(
-                            customer_id = user.get('id', None),
-                            first_name = user.get('firstName', None),
-                            last_name = user.get('lastName', None),
-                            phone = user.get('phoneNumbers', [{}])[0].get('number', None) if user.get('phoneNumbers', None) else None,
-                            email = user.get('emails', [{}])[0].get('email', None) if user.get('emails', None) else None
-                            )
+                        try:
+                            customer = Customer.objects.create(
+                                customer_id = user.get('id', None),
+                                first_name = user.get('firstName', None),
+                                last_name = user.get('lastName', None),
+                                phone = user.get('phoneNumbers', [{}])[0].get('number', None) if user.get('phoneNumbers', None) else None,
+                                email = user.get('emails', [{}])[0].get('email', None) if user.get('emails', None) else None
+                                )
+                            print(f"Customer {customer.customer_id} created successfully")
+                        except Exception as e:
+                            self.stderr.write(f"Error: {e}")
                     
-                    print(f"Customer {customer.customer_id} created successfully")
+                    
 
         except Exception as e: # skip tenant for superuser or if error occurs
                 self.stderr.write(f"Skipping due to error: {e}")
