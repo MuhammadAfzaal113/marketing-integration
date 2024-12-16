@@ -72,7 +72,7 @@ def shopmonkey_webhook(request, webhook_url):
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
-        contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
+        contact_tags = ContactTag.objects.filter(webhook=webhook).first().tag_id #get tag name list from contact tag model
         filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
         try:
@@ -119,7 +119,7 @@ def shopmonkey_webhook(request, webhook_url):
             phone=customer_phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=matching_tags,
+            tags=contact_tags,
             api_key=api_key
         )
 
