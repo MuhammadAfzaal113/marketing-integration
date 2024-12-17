@@ -1,56 +1,15 @@
 import uuid
 import json
 import requests
+import json
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import json
 from webhook_integrate.models import *
-import requests
 from datetime import datetime
-import uuid
 
-def json_reader(json_data, key):
-    if isinstance(json_data, dict):
-        if key in json_data:
-            return json_data[key]
-        else:
-            for value in json_data.values():
-                result = json_reader(value, key)
-                if result is not None:
-                    return result
-    elif isinstance(json_data, list):
-        for item in json_data:
-            result = json_reader(item, key)
-            if result is not None:
-                return result
-    return None
-
-
-def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
-    url = "https://rest.gohighlevel.com/v1/contacts/"
-    data = {
-        'source': "AutoMojo API",
-        'email': email,
-        'phone': phone,
-        'name': name,
-        'firstName': name.split()[0] if name else "",
-        'lastName': name.split()[1] if len(name.split()) > 1 else "",
-        'tags': tags or [],
-        'customField': custom_fields
-    }
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {api_key}'
-    }
-    response = requests.post(url, headers=headers, json=data)
-
-    if response.status_code == 200:
-        return response.json().get("contact", {}).get("id")
-    else:
-        print(response.status_code, response.text)
-        raise Exception("Failed to create contact via API")
+from dblogs.models import DataBaseLogs
+from utils.helper import json_reader, create_contact_via_api
 
 
 @csrf_exempt
@@ -69,6 +28,8 @@ def shopmonkey_webhook(request, webhook_url):
         if not webhook:
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
+        WebhookRequests.objects.create(webhook=webhook, request_data=data) # save request data to db
+        
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
@@ -85,17 +46,18 @@ def shopmonkey_webhook(request, webhook_url):
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
         
+        # ---------- Check  if webhook is filter or not ---------------
         if webhook.is_filter:
-            # Extract tags dynamically from the incoming data based on ContactTag entries
             matching_tags = []
             for tag in tags:
                 if json_reader(data, tag.tag_name):
                     matching_tags.append(tag)
-
-            # Continue only if relevant tags found in data
+                    
+            # if not matching_tags then return success
             if not matching_tags:
                 return JsonResponse({'status': 'success'}, status=200)
             
+        # --------------- Collecting data from incoming request ----------------
         customer_email = json_reader(data, str(filter_keys.email))
         customer_phone = json_reader(data, str(filter_keys.phone))
         first_name = json_reader(data, str(filter_keys.first_name))
@@ -113,6 +75,7 @@ def shopmonkey_webhook(request, webhook_url):
             custom_field_map.get('creation_date'): str(creation_date)
         }
 
+        # ----------------- Create contact in GoHighLevel -----------------
         customer_name = f"{first_name} {last_name}".strip()
         contact_id = create_contact_via_api(
             email=customer_email,
@@ -122,14 +85,27 @@ def shopmonkey_webhook(request, webhook_url):
             tags=contact_tags,
             api_key=api_key
         )
-
+        
+        # ----------------- Delete old requests More then 10 Record -----------------
+        webhook_requests = WebhookRequests.objects.filter(webhook=webhook).order_by('-created_at')
+        if webhook_requests.count() > 10:
+            for request in webhook_requests[10:]:
+                request.delete()
+        
         if contact_id:
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
         return JsonResponse({"error": "Invalid data"}, status=200)
-    except Shop.DoesNotExist:
-        return JsonResponse({"error": "Shop not found"}, status=404)
     except Exception as e:
-        print({"error": str(e)})
+        # --------------- Store Error in DataBaseLogs ----------------
+        log_description = f"Failed to send data to GoHighLevel: {str(e)}"
+        DataBaseLogs.objects.create(
+            description=log_description,
+            error=str(e),
+            webhook_version='V1',
+            level='error',
+            action='failed'
+        )
+
         return JsonResponse({"error": str(e)}, status=200)
 
 
@@ -207,13 +183,13 @@ def shopmonkey_webhook_v2(request, webhook_url):
             if not matching_tags:
                 return JsonResponse({'status': 'success'}, status=200)
             
+        # -------------------- Fetch customer data from incoming request --------------------    
         customer_id = json_reader(data, 'customerId')
-        
         customer = Customer.objects.filter(customer_id=customer_id).first()
-        
         if not customer:
                 return JsonResponse({'error': 'Customer not found'}, status=200)
         
+        # -------------------- Collecting data from incoming request --------------------
         creation_date = json_reader(data, str(filter_keys.date))
         total_cost = json_reader(data, str(filter_keys.total))
         is_paid = json_reader(data, "paid")
@@ -227,6 +203,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
             custom_field_map.get('creation_date'): str(creation_date)
         }
 
+        # -------------------- Create contact for GoHighLevel --------------------
         customer_name = f"{customer.first_name} {customer.last_name}".strip()
         contact_id = create_contact_via_api(
             email=customer.email,
@@ -236,12 +213,23 @@ def shopmonkey_webhook_v2(request, webhook_url):
             tags=matching_tags,
             api_key=api_key
         )
+        
+        # ---------------- Delete old requests More then 10 Record ----------------
+        webhook_requests = WebhookRequests.objects.filter(webhook=webhook).order_by('-created_at')
+        if webhook_requests.count() > 10:
+            for request in webhook_requests[10:]:
+                request.delete()
 
         if contact_id:
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
         return JsonResponse({"error": "Invalid data"}, status=200)
-    except Shop.DoesNotExist:
-        return JsonResponse({"error": "Shop not found"}, status=200)
     except Exception as e:
-        print({"error": str(e)})
+        log_description = f"Failed to send data to GoHighLevel: {str(e)}"
+        DataBaseLogs.objects.create(
+            description=log_description,
+            error=str(e),
+            webhook_version='V2',
+            level='error',
+            action='failed'
+        )
         return JsonResponse({"error": str(e)}, status=200)
