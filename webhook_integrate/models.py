@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+from utils.abstract_models import CommonFields
 
 
 class Shop(models.Model):
@@ -70,3 +71,10 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.customer_id
+    
+class WebhookRequests(CommonFields):
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+    request_data = models.JSONField()
+
+    def __str__(self):
+        return f'{self.webhook.webhook_name}'
