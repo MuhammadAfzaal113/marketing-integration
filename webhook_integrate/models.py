@@ -1,17 +1,15 @@
 from django.db import models
 import uuid
+from utils.abstract_models import CommonFields
 
-
-class Shop(models.Model):
-    shop_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class Shop(CommonFields):
     shop_name = models.CharField(max_length=255)
     api_key = models.CharField(max_length=255)
 
     def __str__(self):
         return self.shop_name
 
-class Webhook(models.Model):
-    webhook_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class Webhook(CommonFields):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
     webhook_name = models.CharField(max_length=255)
     webhook_url = models.CharField(max_length=255)
@@ -20,8 +18,7 @@ class Webhook(models.Model):
     def __str__(self):
         return f'{self.shop.shop_name} - {self.webhook_name}'
 
-class Tag(models.Model):
-    tag_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class Tag(CommonFields):
     webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
     tag_name = models.CharField(max_length=255)
     tag_id = models.CharField(max_length=255)
@@ -30,27 +27,25 @@ class Tag(models.Model):
         return self.tag_name
 
 
-class CustomField(models.Model):
-    custom_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class CustomField(CommonFields):
     webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
-    field_name = models.CharField(max_length=255)
-    field_id = models.CharField(max_length=255)
+    field_key = models.CharField(max_length=255)
+    field_value = models.CharField(max_length=255)
 
     def __str__(self):
         return self.field_name
 
 
-class ContactTag(models.Model):
-    contact_tag_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class ContactTag(CommonFields):
     webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
     tag_name = models.CharField(max_length=255)
-    tag_id = models.CharField(max_length=255)
+    tag_value = models.CharField(max_length=255)
 
     def __str__(self):
         return self.tag_name
 
 
-class FilterKeys(models.Model):
+class FilterKeys(CommonFields):
     webhook = models.OneToOneField(Webhook, on_delete=models.CASCADE, unique=True)
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
@@ -60,8 +55,7 @@ class FilterKeys(models.Model):
     date = models.CharField(max_length=255, null=True, blank=True)
     
 
-class Customer(models.Model):
-    customer_uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+class Customer(CommonFields):
     customer_id = models.CharField(max_length=255, unique=True)
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
