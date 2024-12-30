@@ -4,11 +4,16 @@ import requests
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import json
 from webhook_integrate.models import *
-import requests
 from datetime import datetime
-import uuid
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.db.models import Q
+
+from rest_framework import status
+from webhook_integrate.serializers import *
+
+
 
 def json_reader(json_data, key):
     if isinstance(json_data, dict):
@@ -245,3 +250,236 @@ def shopmonkey_webhook_v2(request, webhook_url):
     except Exception as e:
         print({"error": str(e)})
         return JsonResponse({"error": str(e)}, status=200)
+    
+    
+# ----------------------- New Webhook -----------------------
+@api_view(['POST'])
+def generate_webhook_v1(request):
+    try:
+        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        return Response({'url': generated_url}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not generated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def generate_webhook_v2(request):
+    try:
+        generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
+        return Response({'url': generated_url}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not generated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def create_shop(request):
+    try:
+        shop_name = request.data.get('shop_name')
+        api_key = request.data.get('api_key')
+        shop = Shop.objects.create(shop_name=shop_name, api_key=api_key)
+        response_data = {
+            'Success': True,
+            'Message': 'shop created successfully',
+            'id': str(shop.id)
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Shope not create due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PUT'])
+def update_shop(request):
+    try:
+        data = request.data
+        shop_id = data.get('shop_id')
+        if not shop_id:
+            return Response({'success': False, 'Message': 'Shop id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        shop = Shop.objects.filter(id=shop_id).first()
+        if not shop:
+            return Response({'success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        shop.shop_name = data.get('shop_name', shop.shop_name)
+        shop.api_key = data.get('api_key', shop.api_key)
+        shop.save()
+        response_data = {
+            'Success': True,
+            'Message': 'shop updated successfully',
+            'id': str(shop.id)
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Shop not updated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+def delete_shop(request):
+    try:
+        shop_id = request.data.get('shop_id')
+        if not shop_id:
+            return Response({'success': False, 'Message': 'Shop id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        shop = Shop.objects.filter(id=shop_id).first()
+        if not shop:
+            return Response({'success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        shop.delete()
+        return Response({'success': True, 'Message': 'Shop deleted successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Shop not deleted due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_shop(request):
+    try:
+        shop_id = request.GET.get('shop_id', None)
+        search = request.GET.get('search', None)
+        index = int(request.GET.get('index', 0))
+        offset = int(request.GET.get('offset', 10))
+        
+        if shop_id:
+            shop = Shop.objects.filter(id=shop_id).first()
+            if not shop:
+                return Response({'Success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_NOT_FOUND)
+            else:
+                serializer = ShopSerializer(shop)
+                response_data = {
+                    'success': True,
+                    'message': 'Shop found successfully by id',
+                    'results': serializer.data
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            query = Q()
+            if search:
+                query &= Q(shop_name__icontains=search)
+            
+            shops = Shop.objects.filter(query).order_by('-created_at')
+            total = shops.count()
+            
+            if index and offset:
+                shops = shops[index:index+offset]
+            
+            serializer = ShopSerializer(shops, many=True)
+            response_data = {
+                'success': True,
+                'message': 'Shop found successfully',
+                'total': total,
+                'results': serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Shop not found due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def create_webhook(request):
+    try:
+        data = request.data
+        shop_id = data.get('shop_id', None)
+        if not shop_id:
+            return Response({'success': False, 'Message': 'Shop id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        shop = Shop.objects.filter(id=shop_id).first()
+        if not shop:
+            return Response({'success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        webhook_name = data.get('webhook_name', None)
+        webhook_url = data.get('webhook_url', None)
+        if not webhook_url:
+            return Response({'success': False, 'Message': 'Webhook url is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        is_filter = data.get('is_filter', False)
+        webhook = Webhook.objects.create(
+            shop=shop, 
+            webhook_name=webhook_name, 
+            webhook_url=webhook_url, 
+            is_filter=is_filter)
+        
+        response_data = {
+            'Success': True,
+            'Message': 'Webhook created successfully',
+            'id': str(webhook.id)
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not create due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+@api_view(['PUT'])
+def update_webhook(request):
+    try:
+        data = request.data
+        webhook_id = data.get('webhook_id')
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        webhook.webhook_name = data.get('webhook_name', webhook.webhook_name)
+        webhook.webhook_url = data.get('webhook_url', webhook.webhook_url)
+        webhook.is_filter = data.get('is_filter', webhook.is_filter)
+        webhook.save()
+        response_data = {
+            'Success': True,
+            'Message': 'Webhook updated successfully',
+            'id': str(webhook.id)
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not updated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['DELETE'])
+def delete_webhook(request):
+    try:
+        webhook_id = request.data.get('webhook_id')
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        webhook.delete()
+        return Response({'success': True, 'Message': 'Webhook deleted successfully'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not deleted due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def get_webhook(request):
+    try:
+        webhook_id = request.GET.get('webhook_id', None)
+        search = request.GET.get('search', None)
+        index = int(request.GET.get('index', 0))
+        offset = int(request.GET.get('offset', 10))
+        
+        if webhook_id:
+            webhook = Webhook.objects.filter(id=webhook_id).first()
+            if not webhook:
+                return Response({'Success': False, 'Message': 'Webhook not found'}, status=status.HTTP_400_NOT_FOUND)
+            else:
+                serializer = WebhookSerializer(webhook)
+                response_data = {
+                    'success': True,
+                    'message': 'Webhook found successfully by id',
+                    'results': serializer.data
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            query = Q()
+            if search:
+                query &= Q(webhook_name__icontains=search) | Q(shop__shop_name__icontains=search)
+            
+            webhooks = Webhook.objects.filter(query).order_by('-created_at')
+            total = webhooks.count()
+            
+            if index and offset:
+                webhooks = webhooks[index:index+offset]
+            
+            serializer = WebhookSerializer(webhooks, many=True)
+            response_data = {
+                'success': True,
+                'message': 'Webhook found successfully',
+                'total': total,
+                'results': serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Webhook not found due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
