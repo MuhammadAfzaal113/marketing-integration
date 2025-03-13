@@ -394,7 +394,7 @@ def create_webhook(request):
         response_data = {
             'Success': True,
             'Message': 'Webhook created successfully',
-            'id': str(webhook.id)
+            'results': WebhookSerializer(webhook).data
         }
         return Response(response_data, status=status.HTTP_201_CREATED)
     
@@ -420,7 +420,7 @@ def update_webhook(request):
         response_data = {
             'Success': True,
             'Message': 'Webhook updated successfully',
-            'id': str(webhook.id)
+            'results': WebhookSerializer(webhook).data
         }
         return Response(response_data, status=status.HTTP_200_OK)
     except Exception as e:
@@ -458,8 +458,8 @@ def get_webhook(request):
                 serializer = WebhookSerializer(webhook)
                 response_data = {
                     'success': True,
-                    'message': 'Webhook found successfully by id',
-                    'results': serializer.data
+                    'message': 'Webhook found successfully',
+                    'results': [serializer.data]
                 }
                 return Response(response_data, status=status.HTTP_200_OK)
         else:
@@ -483,3 +483,158 @@ def get_webhook(request):
             return Response(response_data, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'success': False, 'Message': f'Webhook not found due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def add_filter(request):
+    try:
+        data = requests.data
+        
+        webhook_id = data.get('webhook_id', None)
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        tags = data.get('tags', [])
+        for tag in tags:
+            Tag.objects.create(webhook=webhook, tag_name=tag.get('tag_name'), tag_id=tag.get('tag_id'))
+            
+        response_data = {
+            'success': True,
+            'Message': 'Filter added successfully',
+            'results': [WebhookSerializer(webhook).data]
+        }
+            
+        return Response(response_data, status=status.HTTP_201_CREATED)
+        
+        
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Filter not added due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['PUT'])
+def update_filter(request):
+    try:
+        data = requests.data
+        
+        webhook_id = data.get('webhook_id', None)
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_400_NOT_FOUND)
+        
+        Tag.objects.filter(webhook_id=webhook_id).delete()
+        
+        tags = data.get('tags', [])
+        for tag in tags:
+            Tag.objects.create(webhook_id=webhook_id, tag_name=tag.get('tag_name'), tag_id=tag.get('tag_id'))
+            
+        response_data = {
+            'success': True,
+            'Message': 'Filter updated successfully',
+            'results': [WebhookSerializer(webhook).data]
+        }    
+            
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Filter not updated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+api_view(['DELETE'])
+def delete_filter(request):
+    try:
+        data = requests.data
+        
+        webhook_id = data.get('webhook_id', None)
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        Tag.objects.filter(webhook_id=webhook_id).delete()
+        
+        return Response({'success': True, 'Message': 'Filter deleted successfully'}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Filter not deleted due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def add_custom_field(request):
+    try:
+        data = request.data  # Fixed from `requests.data` to `request.data`
+        
+        webhook_id = data.get('webhook_id')
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        fields = data.get('fields', [])
+        for field in fields:
+            CustomField.objects.create(
+                webhook=webhook, 
+                field_key=field.get('field_key'), 
+                field_value=field.get('field_value')
+            )
+        
+        return Response({
+            'success': True,
+            'Message': 'Custom fields added successfully',
+            'results': [WebhookSerializer(webhook).data]
+        }, status=status.HTTP_201_CREATED)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Custom fields not added due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+def update_custom_field(request):
+    try:
+        data = request.data  # Fixed typo
+
+        webhook_id = data.get('webhook_id')
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        webhook = Webhook.objects.filter(id=webhook_id).first()
+        if not webhook:
+            return Response({'success': False, 'Message': 'Webhook not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete existing custom fields
+        CustomField.objects.filter(webhook_id=webhook_id).delete()
+
+        # Add new custom fields
+        fields = data.get('fields', [])
+        for field in fields:
+            CustomField.objects.create(
+                webhook=webhook, 
+                field_key=field.get('field_key'), 
+                field_value=field.get('field_value')
+            )
+
+        return Response({
+            'success': True,
+            'Message': 'Custom fields updated successfully',
+            'results': [WebhookSerializer(webhook).data]
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Custom fields not updated due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def delete_custom_field(request):
+    try:
+        data = request.data  # Fixed typo
+        
+        webhook_id = data.get('webhook_id')
+        if not webhook_id:
+            return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        CustomField.objects.filter(webhook_id=webhook_id).delete()
+        
+        return Response({'success': True, 'Message': 'Custom fields deleted successfully'}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'Message': f'Custom fields not deleted due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
