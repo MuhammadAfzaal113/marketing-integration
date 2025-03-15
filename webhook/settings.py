@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'webhook_integrate'
+    'webhook_integrate',
+    'dblogs',
 ]
 
 MIDDLEWARE = [

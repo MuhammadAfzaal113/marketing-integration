@@ -64,3 +64,10 @@ class Customer(CommonFields):
 
     def __str__(self):
         return self.customer_id
+    
+class WebhookRequests(CommonFields):
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE)
+    request_data = models.JSONField()
+
+    def __str__(self):
+        return f'{self.webhook.webhook_name}'
