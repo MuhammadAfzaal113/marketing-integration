@@ -722,7 +722,7 @@ def delete_contact_tag(request):
 
 
 @api_view(['POST'])
-def upsert_filter_keys(request):
+def add_collect_data(request):
     try:
         data = request.data  # Fixed typo
         
@@ -755,7 +755,7 @@ def upsert_filter_keys(request):
         return Response({'success': False, 'Message': f'Operation failed due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
-def update_filter_keys(request):
+def update_collect_data(request):
     try:
         data = request.data  # Fixed typo
 
@@ -791,7 +791,7 @@ def update_filter_keys(request):
 
     
 @api_view(['DELETE'])
-def delete_filter_keys(request):
+def delete_collect_data(request):
     try:
         data = request.data  # Fixed typo
         
