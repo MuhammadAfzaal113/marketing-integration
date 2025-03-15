@@ -41,4 +41,8 @@ urlpatterns = [
     path('collect-data/create', add_collect_data, name='create_collect_data'),
     path('collect-data/update', update_collect_data, name='update_collect_data'),
     path('collect-data/delete', delete_collect_data, name='delete_collect_data'),
+    
+    #Generate Webhook URL
+    path('generate-webhook-v1', generate_webhook_v1, name='generate_webhook_v1'),
+    path('generate-webhook-v2', generate_webhook_v2, name='generate_webhook_v2'),
 ]

@@ -805,3 +805,21 @@ def delete_collect_data(request):
     
     except Exception as e:
         return Response({'success': False, 'Message': f'Operation failed due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def generate_webhook_v1(request):
+    try:
+        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
+        return Response({'success': True, 'message': "Webhook v1 URL generated successfully", 'url': generated_url}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'message': f'Operation failed due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def generate_webhook_v2(request):
+    try:
+        generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
+        return Response({'success': True, 'message': "Webhook v2 URL generated successfully", 'url': generated_url}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response({'success': False, 'message': f'Operation failed due to {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
