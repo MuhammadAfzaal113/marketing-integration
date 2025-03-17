@@ -11,9 +11,12 @@ from datetime import datetime
 from dblogs.models import DataBaseLogs
 from utils.helper import json_reader, create_contact_via_api
 
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
+from rest_framework import status
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
 from webhook_integrate.serializers import * 
 from django.db.models import Q
 
@@ -284,7 +287,7 @@ def update_shop(request):
         
         shop = Shop.objects.filter(id=shop_id).first()
         if not shop:
-            return Response({'success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_NOT_FOUND)
+            return Response({'success': False, 'Message': 'Shop not found'}, status=status.HTTP_400_BAD_REQUEST)
         
         shop.shop_name = data.get('shop_name', shop.shop_name)
         shop.api_key = data.get('api_key', shop.api_key)
@@ -301,7 +304,7 @@ def update_shop(request):
 @api_view(['DELETE'])
 def delete_shop(request):
     try:
-        shop_id = request.data.get('shop_id')
+        shop_id = request.GET.get('shop_id')
         if not shop_id:
             return Response({'success': False, 'Message': 'Shop id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -418,7 +421,7 @@ def update_webhook(request):
 @api_view(['DELETE'])
 def delete_webhook(request):
     try:
-        webhook_id = request.data.get('webhook_id')
+        webhook_id = request.GET.get('webhook_id')
         if not webhook_id:
             return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -448,7 +451,7 @@ def get_webhook(request):
                 response_data = {
                     'success': True,
                     'message': 'Webhook found successfully',
-                    'results': [serializer.data]
+                    'results': serializer.data
                 }
                 return Response(response_data, status=status.HTTP_200_OK)
         else:
@@ -476,7 +479,7 @@ def get_webhook(request):
 @api_view(['POST'])
 def add_filter(request):
     try:
-        data = requests.data
+        data = request.data
         
         webhook_id = data.get('webhook_id', None)
         if not webhook_id:
@@ -505,7 +508,7 @@ def add_filter(request):
 @api_view(['PUT'])
 def update_filter(request):
     try:
-        data = requests.data
+        data = request.data
         
         webhook_id = data.get('webhook_id', None)
         if not webhook_id:
@@ -535,9 +538,8 @@ def update_filter(request):
 api_view(['DELETE'])
 def delete_filter(request):
     try:
-        data = requests.data
         
-        webhook_id = data.get('webhook_id', None)
+        webhook_id = request.GET.get('webhook_id', None)
         if not webhook_id:
             return Response({'success': False, 'Message': 'Webhook id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -551,7 +553,7 @@ def delete_filter(request):
 @api_view(['POST'])
 def add_custom_field(request):
     try:
-        data = request.data  # Fixed from `requests.data` to `request.data`
+        data = request.data
         
         webhook_id = data.get('webhook_id')
         if not webhook_id:
@@ -565,14 +567,14 @@ def add_custom_field(request):
         for field in fields:
             CustomField.objects.create(
                 webhook=webhook, 
-                field_key=field.get('field_key'), 
-                field_value=field.get('field_value')
+                field_key=field.get('field_key', None), 
+                field_value=field.get('field_value', None)
             )
         
         return Response({
             'success': True,
             'Message': 'Custom fields added successfully',
-            'results': [WebhookSerializer(webhook).data]
+            'results': WebhookSerializer(webhook).data
         }, status=status.HTTP_201_CREATED)
     
     except Exception as e:
@@ -615,9 +617,8 @@ def update_custom_field(request):
 @api_view(['DELETE'])
 def delete_custom_field(request):
     try:
-        data = request.data  # Fixed typo
         
-        webhook_id = data.get('webhook_id')
+        webhook_id = request.GET.get('webhook_id', None)
         if not webhook_id:
             return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -696,9 +697,8 @@ def update_contact_tag(request):
 @api_view(['DELETE'])
 def delete_contact_tag(request):
     try:
-        data = request.data  # Fixed typo
-        
-        webhook_id = data.get('webhook_id')
+
+        webhook_id = request.GET.get('webhook_id')
         if not webhook_id:
             return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -732,7 +732,6 @@ def add_collect_data(request):
             phone=data.get('phone', None),
             total=data.get('total', None),
             date=data.get('date', None))
-        message = 'Filter keys created successfully'
         
         return Response({
             'success': True,
@@ -782,9 +781,7 @@ def update_collect_data(request):
 @api_view(['DELETE'])
 def delete_collect_data(request):
     try:
-        data = request.data  # Fixed typo
-        
-        webhook_id = data.get('webhook_id')
+        webhook_id = request.GET.get('webhook_id')
         if not webhook_id:
             return Response({'success': False, 'Message': 'Webhook ID is required'}, status=status.HTTP_400_BAD_REQUEST)
         
