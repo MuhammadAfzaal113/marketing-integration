@@ -26,27 +26,29 @@ class ContactTagSerializer(serializers.ModelSerializer):
 class Collect_DataSerializer(serializers.ModelSerializer):
     class Meta:
         model = FilterKeys
-        fields = ['id', 'customer_id', 'first_name', 'last_name', 'email', 'phone', 'total', 'date']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'total', 'date']
         
 class WebhookSerializer(serializers.ModelSerializer):
     shop = serializers.StringRelatedField(source='shop.shop_name')
     webhook_filters = serializers.SerializerMethodField(read_only=True)
-    custom_field = serializers.StringRelatedField(read_only=True)
-    contact_tag = serializers.StringRelatedField(read_only=True)
-    collect_data = serializers.StringRelatedField(read_only=True)
+    custom_field = serializers.SerializerMethodField(read_only=True)
+    contact_tag = serializers.SerializerMethodField(read_only=True)
+    collect_data = serializers.SerializerMethodField(read_only=True)
     
     
-    def get_filter(self, obj):
-        return FilterSerializer(Tag.objects.filter(Webhook_id=obj.id), many=True).data
+    def get_webhook_filters(self, obj):
+        return FilterSerializer(Tag.objects.filter(webhook_id=obj.id), many=True).data
     
     def get_custom_field(self, obj):
-        return CustomFieldSerializer(CustomField.objects.filter(Webhook_id=obj.id), many=True).data
-    
+        print(obj.id)
+        return CustomFieldSerializer(CustomField.objects.filter(webhook=obj), many=True).data
+
     def get_contact_tag(self, obj):
-        return ContactTagSerializer(ContactTag.objects.filter(Webhook_id=obj.id), many=True).data
-    
+        return ContactTagSerializer(ContactTag.objects.filter(webhook=obj), many=True).data
+
     def get_collect_data(self, obj):
-        return Collect_DataSerializer(FilterKeys.objects.filter(Webhook_id=obj.id), many=True).data
+        return Collect_DataSerializer(FilterKeys.objects.filter(webhook=obj), many=True).data
+
     
     class Meta:
         model = Webhook
