@@ -90,7 +90,7 @@ WSGI_APPLICATION = 'webhook.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'webhook_zaps',
+        'NAME': 'webhook',
         'USER': 'postgres',
         'PASSWORD': '4ZT9HJSmDH36OBu3M0RS',
         'HOST': 'automojo.cday8qsyg9nx.us-east-2.rds.amazonaws.com',
