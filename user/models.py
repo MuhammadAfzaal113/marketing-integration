@@ -4,14 +4,6 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import get_user_model
-
-
-User = get_user_model()
-# def user_image_path(instance, filename):
-#     if instance:
-#         user_id = instance.id
-#         return f"{settings.BUCKET_BLOB_PATH}/ProfilePictures/user_{user_id}/{filename}"
 
 
 class UserManager(BaseUserManager):
@@ -51,8 +43,8 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    username = None
     
+    username = None 
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(_('email address'), unique=True)
