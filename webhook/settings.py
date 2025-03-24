@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'webhook_integrate',
     'dblogs',
+    'user',
 ]
 
 MIDDLEWARE = [
