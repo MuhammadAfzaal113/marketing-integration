@@ -3,8 +3,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import get_user_model
 
 
+User = get_user_model()
 # def user_image_path(instance, filename):
 #     if instance:
 #         user_id = instance.id
@@ -75,6 +78,9 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
 
     objects = UserManager()
-
-    def __str__(self):
-        return self.email
+    
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding  # Check if user is being created
+        super().save(*args, **kwargs)
+        if is_new:  # Only create a token for new users
+            Token.objects.create(user=self)
