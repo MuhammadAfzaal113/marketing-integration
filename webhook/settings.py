@@ -49,8 +49,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'webhook_integrate',
     'dblogs',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -99,6 +101,20 @@ DATABASES = {
     }
 }
 
+AUTHENTICATION_BACKENDS = [
+    'user.authentication.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',  
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',  # Require authentication by default
+    ),
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
