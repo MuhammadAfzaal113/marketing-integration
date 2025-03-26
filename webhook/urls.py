@@ -25,7 +25,7 @@ urlpatterns = [
     re_path(r'^webhook/v2/(?P<webhook_url>[a-zA-Z0-9]+)', shopmonkey_webhook_v2),
     re_path(r'^webhook/(?P<webhook_url>[a-zA-Z0-9]+)', shopmonkey_webhook),
     path('hook/api/v1/', include('webhook_integrate.urls')),
-    path('api/v1/', include('user.urls')),
+    path('hook/api/v1/', include('user.urls')),
     path("", admin.site.urls),
 ]
 
