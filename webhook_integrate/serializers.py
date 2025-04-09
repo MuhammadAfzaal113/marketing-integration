@@ -28,13 +28,21 @@ class Collect_DataSerializer(serializers.ModelSerializer):
         model = FilterKeys
         fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'total', 'date']
         
+class WebhookRequestsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebhookRequests
+        fields = ['request_data']
+        
 class WebhookSerializer(serializers.ModelSerializer):
     shop = serializers.StringRelatedField(source='shop.shop_name')
     webhook_filters = serializers.SerializerMethodField(read_only=True)
     custom_field = serializers.SerializerMethodField(read_only=True)
     contact_tag = serializers.SerializerMethodField(read_only=True)
     collect_data = serializers.SerializerMethodField(read_only=True)
+    webhook_requests = serializers.SerializerMethodField(read_only=True)
     
+    def get_WebhookRequests(self, obj):
+        return WebhookRequestsSerializer(WebhookRequests.objects.filter(webhook=obj), many=True).data
     
     def get_webhook_filters(self, obj):
         return FilterSerializer(Tag.objects.filter(webhook_id=obj.id), many=True).data
@@ -52,4 +60,4 @@ class WebhookSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Webhook
-        fields = ['id', 'shop', 'webhook_name', 'webhook_url', 'is_filter', 'webhook_filters', 'custom_field', 'contact_tag', 'collect_data']
+        fields = ['id', 'shop', 'webhook_name', 'webhook_url', 'is_filter', 'webhook_filters', 'custom_field', 'contact_tag', 'collect_data', 'webhook_requests']
