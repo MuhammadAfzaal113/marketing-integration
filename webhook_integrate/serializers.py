@@ -41,7 +41,7 @@ class WebhookSerializer(serializers.ModelSerializer):
     collect_data = serializers.SerializerMethodField(read_only=True)
     webhook_requests = serializers.SerializerMethodField(read_only=True)
     
-    def get_WebhookRequests(self, obj):
+    def get_webhook_requests(self, obj):
         return WebhookRequestsSerializer(WebhookRequests.objects.filter(webhook=obj), many=True).data
     
     def get_webhook_filters(self, obj):
