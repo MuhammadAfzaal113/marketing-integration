@@ -22,6 +22,7 @@ from django.db.models import Q
 
 
 @csrf_exempt
+@permission_classes([AllowAny])
 def shopmonkey_webhook(request, webhook_url):
     try:
         with open('data.txt', 'w') as f:
@@ -37,12 +38,12 @@ def shopmonkey_webhook(request, webhook_url):
         if not webhook:
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
-        WebhookRequests.objects.create(webhook=webhook, request_data=data) # save request data to db
+        # WebhookRequests.objects.create(webhook=webhook, request_data=request.body) # save request data to db
         
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
         custom_fields = CustomField.objects.filter(webhook=webhook)
-        contact_tags = ContactTag.objects.filter(webhook=webhook).first().tag_id #get tag name list from contact tag model
+        contact_tags = ContactTag.objects.filter(webhook=webhook).first() #get tag name list from contact tag model
         filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
         try:
@@ -91,7 +92,7 @@ def shopmonkey_webhook(request, webhook_url):
             phone=customer_phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=contact_tags,
+            tags=contact_tags.tag_value if contact_tags else None,
             api_key=api_key
         )
         
@@ -133,22 +134,23 @@ def write_or_append_json(data, file_path="data.json"):
     with open(file_path, "w") as file:
         json.dump(json_data, file, indent=4)
 
-# API to create a new webhook
-@csrf_exempt
-def create_webhook(request):
-    if request.method == 'POST':
-        generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
-        return JsonResponse({'url': generated_url})
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+# # API to create a new webhook
+# @csrf_exempt
+# def create_webhook(request):
+#     if request.method == 'POST':
+#         generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
+#         return JsonResponse({'url': generated_url})
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+# @csrf_exempt
+# def create_webhook_v2(request):
+#     if request.method == 'POST':
+#         generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
+#         return JsonResponse({'url': generated_url})
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @csrf_exempt
-def create_webhook_v2(request):
-    if request.method == 'POST':
-        generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
-        return JsonResponse({'url': generated_url})
-    return JsonResponse({'error': 'Invalid request'}, status=400)
-
-@csrf_exempt
+@permission_classes([AllowAny])
 def shopmonkey_webhook_v2(request, webhook_url):
     try:
         with open('data.txt', 'w') as f:
