@@ -4,7 +4,7 @@ from .views import *
 
 urlpatterns = [
     path('admin/generate_webhook/', create_webhook, name='generate_webhook_url'),
-    path('admin/generate_webhook_v2/', create_webhook_v2, name='generate_webhook_v2_url'),
+    # path('admin/generate_webhook_v2/', create_webhook_v2, name='generate_webhook_v2_url'),
     
     #webhook_url
     path('generate-webhook-url-v1', generate_webhook_v1, name='generate_webhook_url'),
