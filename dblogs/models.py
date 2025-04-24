@@ -12,4 +12,4 @@ class DataBaseLogs(CommonFields):
     action = models.CharField(max_length=50, choices=ACTION_TYPE_CHOICES)
 
     def __str__(self):
-        return f'{self.record_id}'
+        return f'{self.error}'
