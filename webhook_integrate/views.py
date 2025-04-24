@@ -24,12 +24,6 @@ from django.db.models import Q
 @csrf_exempt
 @permission_classes([AllowAny])
 def shopmonkey_webhook(request, webhook_url):
-    try:
-        with open('data.txt', 'w') as f:
-            f.write(str(request.build_absolute_uri()))
-            f.write('\n')
-    except Exception as e:
-        print(e)
     if request.method != 'POST':
         return JsonResponse({"error": "Invalid request method"}, status=405)
 
@@ -38,7 +32,7 @@ def shopmonkey_webhook(request, webhook_url):
         if not webhook:
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
-        # WebhookRequests.objects.create(webhook=webhook, request_data=request.body) # save request data to db
+        WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body)) # save request data to db
         
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
@@ -46,12 +40,7 @@ def shopmonkey_webhook(request, webhook_url):
         contact_tags = ContactTag.objects.filter(webhook=webhook).first() #get tag name list from contact tag model
         filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
-        try:
-            with open('data.json', 'a') as f:
-                json.dump(data, f)
-                f.write('\n')
-        except Exception as e:
-            print(e)
+        
         if webhook_url == '513d1344':
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
@@ -77,7 +66,7 @@ def shopmonkey_webhook(request, webhook_url):
         is_paid = json_reader(data, "isPaid")
         is_invoice = json_reader(data, "isInvoice")
 
-        custom_field_map = {cf.field_name: cf.field_id for cf in custom_fields}
+        custom_field_map = {cf.field_key: cf.field_value for cf in custom_fields}
         custom_fields_data = {
             custom_field_map.get('is_paid'): str(is_paid) if is_paid else 'False',
             custom_field_map.get('is_invoice'): str(is_invoice) if is_invoice else 'False',
@@ -104,6 +93,7 @@ def shopmonkey_webhook(request, webhook_url):
         
         if contact_id:
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+        
         return JsonResponse({"error": "Invalid data"}, status=200)
     except Exception as e:
         # --------------- Store Error in DataBaseLogs ----------------
@@ -152,12 +142,6 @@ def write_or_append_json(data, file_path="data.json"):
 @csrf_exempt
 @permission_classes([AllowAny])
 def shopmonkey_webhook_v2(request, webhook_url):
-    try:
-        with open('data.txt', 'w') as f:
-            f.write(str(request.build_absolute_uri()))
-            f.write('\n')
-    except Exception as e:
-        print(e)
     if request.method != 'POST':
         return JsonResponse({"error": "Invalid request method"}, status=200)
 
@@ -165,6 +149,8 @@ def shopmonkey_webhook_v2(request, webhook_url):
         webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         if not webhook:
             return JsonResponse({"error": "Webhook not found"}, status=200)
+        
+        WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body))
 
         api_key = str(webhook.shop.api_key)
         tags = Tag.objects.filter(webhook=webhook)
@@ -172,12 +158,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
         contact_tags = ContactTag.objects.filter(webhook=webhook) #get tag name list from contact tag model
         filter_keys = FilterKeys.objects.filter(webhook=webhook).first() #get user info from user info model
         data = json.loads(request.body)
-        try:
-            with open('data.json', 'a') as f:
-                json.dump(data, f)
-                f.write('\n')
-        except Exception as e:
-            print(e)
+
         if webhook_url == '513d1344':
             write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
@@ -206,7 +187,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
         is_paid = json_reader(data, "paid")
         is_invoice = json_reader(data, "invoiced")
 
-        custom_field_map = {cf.field_name: cf.field_id for cf in custom_fields}
+        custom_field_map = {cf.field_key: cf.field_value for cf in custom_fields}
         custom_fields_data = {
             custom_field_map.get('is_paid'): str(is_paid) if is_paid else 'False',
             custom_field_map.get('is_invoice'): str(is_invoice) if is_invoice else 'False',
@@ -233,6 +214,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
 
         if contact_id:
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
+        
         return JsonResponse({"error": "Invalid data"}, status=200)
     except Exception as e:
         log_description = f"Failed to send data to GoHighLevel: {str(e)}"
