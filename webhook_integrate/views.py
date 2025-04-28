@@ -92,13 +92,24 @@ def shopmonkey_webhook(request, webhook_url):
                 request.delete()
         
         if contact_id:
+            log_description = f"Data sent successfully to GoHighLevel: {contact_id}"
+            DataBaseLogs.objects.create(
+            webhook=webhook,
+            description=log_description,
+            error=None,
+            webhook_version='V1',
+            level='info',
+            action='successful'
+            )
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
         
         return JsonResponse({"error": "Invalid data"}, status=200)
     except Exception as e:
         # --------------- Store Error in DataBaseLogs ----------------
         log_description = f"Failed to send data to GoHighLevel: {str(e)}"
+        webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         DataBaseLogs.objects.create(
+            webhook=webhook,
             description=log_description,
             error=str(e),
             webhook_version='V1',
@@ -213,12 +224,23 @@ def shopmonkey_webhook_v2(request, webhook_url):
                 request.delete()
 
         if contact_id:
+            log_description = f"Data sent successfully to GoHighLevel: {contact_id}"
+            DataBaseLogs.objects.create(
+                webhook=webhook,
+                description=log_description,
+                error=None,
+                webhook_version='V2',
+                level='info',
+                action='successful'
+            )
             return JsonResponse({"message": "Data sent successfully to GoHighLevel"}, status=200)
         
         return JsonResponse({"error": "Invalid data"}, status=200)
     except Exception as e:
+        webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         log_description = f"Failed to send data to GoHighLevel: {str(e)}"
         DataBaseLogs.objects.create(
+            webhook=webhook,
             description=log_description,
             error=str(e),
             webhook_version='V2',
