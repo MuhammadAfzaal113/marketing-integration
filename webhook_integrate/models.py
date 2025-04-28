@@ -33,7 +33,7 @@ class CustomField(CommonFields):
     field_value = models.CharField(max_length=255)
 
     def __str__(self):
-        return self.field_name
+        return self.field_key
 
 
 class ContactTag(CommonFields):
