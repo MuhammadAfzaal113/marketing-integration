@@ -30,6 +30,14 @@ def shopmonkey_webhook(request, webhook_url):
     try:
         webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         if not webhook:
+            log_description = f"Webhook not found {webhook_url}"
+            DataBaseLogs.objects.create(
+            description=log_description,
+            error=None,
+            webhook_version='V1',
+            level='warn',
+            action='successful'
+            )
             return JsonResponse({"error": "Webhook not found"}, status=404)
 
         WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body)) # save request data to db
@@ -54,6 +62,15 @@ def shopmonkey_webhook(request, webhook_url):
                     
             # if not matching_tags then return success
             if not matching_tags:
+                log_description = f"Tag not found"
+                DataBaseLogs.objects.create(
+                webhook=webhook,
+                description=log_description,
+                error=None,
+                webhook_version='V1',
+                level='warn',
+                action='successful'
+                )
                 return JsonResponse({'status': 'success'}, status=200)
             
         # --------------- Collecting data from incoming request ----------------
@@ -159,6 +176,14 @@ def shopmonkey_webhook_v2(request, webhook_url):
     try:
         webhook = Webhook.objects.filter(webhook_url__contains=webhook_url).first()
         if not webhook:
+            log_description = f"Webhook not found {webhook_url}"
+            DataBaseLogs.objects.create(
+            description=log_description,
+            error=None,
+            webhook_version='V2',
+            level='warn',
+            action='successful'
+            )
             return JsonResponse({"error": "Webhook not found"}, status=200)
         
         WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body))
@@ -184,6 +209,15 @@ def shopmonkey_webhook_v2(request, webhook_url):
 
             # Continue only if relevant tags found in data
             if not matching_tags:
+                log_description = f"Tag not found"
+                DataBaseLogs.objects.create(
+                webhook=webhook,
+                description=log_description,
+                error=None,
+                webhook_version='V2',
+                level='warn',
+                action='successful'
+                )
                 return JsonResponse({'status': 'success'}, status=200)
             
         # -------------------- Fetch customer data from incoming request --------------------    
