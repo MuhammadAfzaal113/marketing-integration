@@ -2,6 +2,8 @@ from django.db import models
 from utils.abstract_models import CommonFields
 from dblogs.enums import *
 from webhook_integrate.models import Webhook
+from datetime import timedelta
+from django.utils.timezone import now
 
 # Create your models here.
 
@@ -15,3 +17,8 @@ class DataBaseLogs(CommonFields):
 
     def __str__(self):
         return f'{self.error}'
+    
+    def save(self, *args, **kwargs):
+        two_weeks_ago = now() - timedelta(weeks=3)
+        DataBaseLogs.objects.filter(created_at__lt=two_weeks_ago).delete()
+        super().save(*args, **kwargs)
