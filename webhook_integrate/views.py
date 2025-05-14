@@ -39,6 +39,9 @@ def shopmonkey_webhook(request, webhook_url):
             action='successful'
             )
             return JsonResponse({"error": "Webhook not found"}, status=404)
+        
+        if not webhook.is_active:
+            return Response({'success': False, 'Message': 'Webhook is not active'}, status=status.HTTP_200_OK)
 
         WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body)) # save request data to db
         
@@ -98,7 +101,7 @@ def shopmonkey_webhook(request, webhook_url):
             phone=customer_phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=contact_tags.tag_value if contact_tags else None,
+            tags=list(custom_fields.values_list('field_value')),
             api_key=api_key
         )
         
@@ -152,21 +155,6 @@ def write_or_append_json(data, file_path="data.json"):
     with open(file_path, "w") as file:
         json.dump(json_data, file, indent=4)
 
-# # API to create a new webhook
-# @csrf_exempt
-# def create_webhook(request):
-#     if request.method == 'POST':
-#         generated_url = f"https://webhook.automojo.io/webhook/{str(uuid.uuid4()).split('-')[0]}"
-#         return JsonResponse({'url': generated_url})
-#     return JsonResponse({'error': 'Invalid request'}, status=400)
-
-# @csrf_exempt
-# def create_webhook_v2(request):
-#     if request.method == 'POST':
-#         generated_url = f"https://webhook.automojo.io/webhook/v2/{str(uuid.uuid4()).split('-')[0]}"
-#         return JsonResponse({'url': generated_url})
-#     return JsonResponse({'error': 'Invalid request'}, status=400)
-
 @csrf_exempt
 @permission_classes([AllowAny])
 def shopmonkey_webhook_v2(request, webhook_url):
@@ -185,6 +173,9 @@ def shopmonkey_webhook_v2(request, webhook_url):
             action='successful'
             )
             return JsonResponse({"error": "Webhook not found"}, status=200)
+        
+        if not webhook.is_active:
+            return Response({'success': False, 'Message': 'Webhook is not active'}, status=status.HTTP_200_OK)
         
         WebhookRequests.objects.create(webhook=webhook, request_data=json.loads(request.body))
 
@@ -247,7 +238,7 @@ def shopmonkey_webhook_v2(request, webhook_url):
             phone=customer.phone,
             name=customer_name,
             custom_fields=custom_fields_data,
-            tags=matching_tags,
+            tags=list(custom_fields.values_list('field_value')),
             api_key=api_key
         )
         
