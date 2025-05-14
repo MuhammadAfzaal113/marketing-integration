@@ -45,6 +45,4 @@ def create_contact_via_api(email, phone, name, custom_fields, tags, api_key):
     if response.status_code == 200:
         return response.json()["contact"]["id"]
     else:
-        print(response.status_code)
-        print(response.text)
-        raise Exception("Failed to create contact via API")
+        raise Exception(f"Failed to create contact via API - {response.status_code}: {response.text}")
