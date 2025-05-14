@@ -53,7 +53,6 @@ def shopmonkey_webhook(request, webhook_url):
         data = json.loads(request.body)
         
         if webhook_url == '513d1344':
-            write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
         
         # ---------- Check  if webhook is filter or not ---------------
@@ -139,22 +138,6 @@ def shopmonkey_webhook(request, webhook_url):
 
         return JsonResponse({"error": str(e)}, status=200)
 
-
-def write_or_append_json(data, file_path="data.json"):
-    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_entry = {current_datetime: data}
-
-    try:
-        with open(file_path, "r") as file:
-            json_data = json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        json_data = []
-
-    json_data.append(new_entry)
-
-    with open(file_path, "w") as file:
-        json.dump(json_data, file, indent=4)
-
 @csrf_exempt
 @permission_classes([AllowAny])
 def shopmonkey_webhook_v2(request, webhook_url):
@@ -187,7 +170,6 @@ def shopmonkey_webhook_v2(request, webhook_url):
         data = json.loads(request.body)
 
         if webhook_url == '513d1344':
-            write_or_append_json(data)
             return JsonResponse({'status': 'success'}, status=200)
         
         if webhook.is_filter:
